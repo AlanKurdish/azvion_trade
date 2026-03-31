@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --gold: #D4AF37;
+  --dark-bg: #0f172a;
+  --dark-surface: #1e293b;
+  --dark-border: #334155;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--dark-bg);
+  color: #e2e8f0;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  font-family: 'Vazirmatn', 'Noto Sans Arabic', Inter, system-ui, sans-serif;
+}
+
+[dir="rtl"] table {
+  direction: rtl;
+}
+
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+[dir="rtl"] select {
+  text-align: right;
+}
+
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+[dir="rtl"] input[type="checkbox"] {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}

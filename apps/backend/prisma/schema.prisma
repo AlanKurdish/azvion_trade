@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+  FAILED
+}
+
+enum TradeType {
+  BUY
+  SELL
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_OPEN
+  TRADE_CLOSE
+  COMMISSION
+}
+
+model User {
+  id           String    @id @default(uuid())
+  phone        String    @unique @db.VarChar(20)
+  password     String    @db.VarChar(255)
+  firstName    String?   @map("first_name") @db.VarChar(100)
+  lastName     String?   @map("last_name") @db.VarChar(100)
+  role         Role      @default(USER)
+  isActive     Boolean   @default(true) @map("is_active")
+  otpCode      String?   @map("otp_code") @db.VarChar(10)
+  otpExpiresAt DateTime? @map("otp_expires_at")
+  refreshToken String?   @map("refresh_token") @db.Text
+  language     String    @default("en")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  balance      Balance?
+  trades       Trade[]
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model Balance {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  amount    Decimal  @default(0) @db.Decimal(18, 2)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("balances")
+}
+
+model Symbol {
+  id          String   @id @default(uuid())
+  name        String
+  displayName String   @map("display_name")
+  mtSymbol    String   @map("mt_symbol")
+  lotSize     Decimal  @map("lot_size") @db.Decimal(10, 4)
+  amount      Decimal  @db.Decimal(18, 2)
+  price       Decimal  @db.Decimal(18, 2)
+  commission  Decimal  @default(0) @db.Decimal(18, 2)
+  isTradable  Boolean  @default(false) @map("is_tradable")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  trades Trade[]
+
+  @@map("symbols")
+}
+
+model Trade {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  symbolId    String      @map("symbol_id")
+  type        TradeType
+  status      TradeStatus @default(OPEN)
+  lotSize     Decimal     @map("lot_size") @db.Decimal(10, 4)
+  openPrice   Decimal     @map("open_price") @db.Decimal(18, 6)
+  closePrice  Decimal?    @map("close_price") @db.Decimal(18, 6)
+  commission  Decimal     @default(0) @db.Decimal(18, 2)
+  profitLoss  Decimal?    @map("profit_loss") @db.Decimal(18, 2)
+  mtOrderId   String?     @map("mt_order_id")
+  mtAccountId String?     @map("mt_account_id")
+  openedAt    DateTime    @default(now()) @map("opened_at")
+  closedAt    DateTime?   @map("closed_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  symbol Symbol @relation(fields: [symbolId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("trades")
+}
+
+model Transaction {
+  id        String          @id @default(uuid())
+  userId    String          @map("user_id")
+  type      TransactionType
+  amount    Decimal         @db.Decimal(18, 2)
+  tradeId   String?         @map("trade_id")
+  note      String?
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("transactions")
+}
+
+model MtAccount {
+  id           String   @id @default(uuid())
+  accountId    String   @unique @map("account_id") @db.VarChar(255)
+  brokerServer String?  @map("broker_server") @db.VarChar(255)
+  login        String?  @db.VarChar(100)
+  platform     String   @default("mt5") @db.VarChar(10)
+  isConnected  Boolean  @default(false) @map("is_connected")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("mt_accounts")
+}
+
+model AppSetting {
+  id    String @id @default(uuid())
+  key   String @unique @db.VarChar(255)
+  value String @db.Text
+
+  @@map("app_settings")
+}
