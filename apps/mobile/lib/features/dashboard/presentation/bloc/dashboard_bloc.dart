@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/dashboard_datasource.dart';
+import '../../../../core/network/websocket_client.dart';
 
 // Events
 abstract class DashboardEvent extends Equatable {
@@ -42,13 +44,31 @@ class DashboardError extends DashboardState {
 // Bloc
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final DashboardDatasource _datasource;
+  final WebSocketClient _wsClient;
+  StreamSubscription? _balanceSub;
+  StreamSubscription? _tradeOpenedSub;
+  StreamSubscription? _tradeClosedSub;
 
-  DashboardBloc(this._datasource) : super(DashboardInitial()) {
+  DashboardBloc(this._datasource, this._wsClient) : super(DashboardInitial()) {
     on<LoadDashboard>(_onLoad);
+
+    // Auto-refresh when balance changes or trades open/close
+    _balanceSub = _wsClient.on('balance:updated').listen((_) {
+      add(LoadDashboard());
+    });
+    _tradeOpenedSub = _wsClient.on('trade:opened').listen((_) {
+      add(LoadDashboard());
+    });
+    _tradeClosedSub = _wsClient.on('trade:closed').listen((_) {
+      add(LoadDashboard());
+    });
   }
 
   Future<void> _onLoad(LoadDashboard event, Emitter<DashboardState> emit) async {
-    emit(DashboardLoading());
+    // Don't show loading spinner on auto-refresh if data already loaded
+    if (state is! DashboardLoaded) {
+      emit(DashboardLoading());
+    }
     try {
       final data = await _datasource.getDashboard();
       emit(DashboardLoaded(
@@ -59,7 +79,17 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         monthlyCommission: (data['monthlyCommission'] as num).toDouble(),
       ));
     } catch (e) {
-      emit(DashboardError(e.toString()));
+      if (state is! DashboardLoaded) {
+        emit(DashboardError(e.toString()));
+      }
     }
+  }
+
+  @override
+  Future<void> close() {
+    _balanceSub?.cancel();
+    _tradeOpenedSub?.cancel();
+    _tradeClosedSub?.cancel();
+    return super.close();
   }
 }

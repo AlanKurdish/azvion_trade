@@ -28,6 +28,10 @@ export class CreateSymbolDto {
   @IsNumber()
   amount: number;
 
+  @IsString()
+  @IsOptional()
+  amountLabel?: string;
+
   @Type(() => Number)
   @IsNumber()
   price: number;

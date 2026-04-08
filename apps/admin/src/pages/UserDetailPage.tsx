@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../lib/api';
 import {
   ArrowLeft, Save, DollarSign, TrendingUp, TrendingDown,
-  History, Edit2, X, Plus, Minus,
+  History, Edit2, X, Plus, Minus, KeyRound,
 } from 'lucide-react';
 
 export default function UserDetailPage() {
@@ -32,6 +32,12 @@ export default function UserDetailPage() {
   const [balanceNote, setBalanceNote] = useState('');
   const [balanceError, setBalanceError] = useState('');
   const [balanceLoading, setBalanceLoading] = useState(false);
+
+  // Reset password
+  const [showResetPw, setShowResetPw] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetPwLoading, setResetPwLoading] = useState(false);
+  const [resetPwMsg, setResetPwMsg] = useState('');
 
   // Active tab
   const [activeTab, setActiveTab] = useState<'trades' | 'transactions'>('trades');
@@ -170,15 +176,22 @@ export default function UserDetailPage() {
         <div className="bg-[#1e293b] p-6 rounded-xl border border-[#334155]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">{t('userDetail.profile')}</h3>
-            {!editing ? (
-              <button onClick={() => setEditing(true)} className="flex items-center gap-1 text-sm text-[#D4AF37] hover:underline">
-                <Edit2 size={14} /> {t('userDetail.edit')}
-              </button>
-            ) : (
-              <button onClick={() => { setEditing(false); setEditErrors({}); }} className="text-gray-400 hover:text-white">
-                <X size={18} />
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {!editing && (
+                <button onClick={() => { setShowResetPw(true); setNewPassword(''); setResetPwMsg(''); }} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white">
+                  <KeyRound size={14} /> {t('userDetail.resetPassword')}
+                </button>
+              )}
+              {!editing ? (
+                <button onClick={() => setEditing(true)} className="flex items-center gap-1 text-sm text-[#D4AF37] hover:underline">
+                  <Edit2 size={14} /> {t('userDetail.edit')}
+                </button>
+              ) : (
+                <button onClick={() => { setEditing(false); setEditErrors({}); }} className="text-gray-400 hover:text-white">
+                  <X size={18} />
+                </button>
+              )}
+            </div>
           </div>
 
           {editErrors.api && (
@@ -310,6 +323,58 @@ export default function UserDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Reset Password Modal */}
+        {showResetPw && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowResetPw(false)}>
+            <div className="bg-[#1e293b] rounded-xl border border-[#334155] p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <KeyRound size={18} className="text-[#D4AF37]" /> {t('userDetail.resetPassword')}
+                </h3>
+                <button onClick={() => setShowResetPw(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+              </div>
+              <p className="text-sm text-gray-400 mb-4">{user?.firstName || user?.phone}</p>
+              {resetPwMsg && (
+                <div className={`mb-3 p-2 rounded text-sm ${resetPwMsg.includes('success') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {resetPwMsg}
+                </div>
+              )}
+              <input
+                type="text"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t('userDetail.newPassword')}
+                className="w-full px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white text-sm mb-1"
+              />
+              <p className="text-xs text-gray-500 mb-4">{t('userDetail.minChars')}</p>
+              <div className="flex gap-2">
+                <button onClick={() => setShowResetPw(false)} className="flex-1 py-2 border border-[#334155] rounded-lg text-sm text-gray-300">
+                  {t('userDetail.cancel')}
+                </button>
+                <button
+                  disabled={newPassword.length < 6 || resetPwLoading}
+                  onClick={async () => {
+                    setResetPwLoading(true);
+                    setResetPwMsg('');
+                    try {
+                      await api.post(`/users/${id}/reset-password`, { password: newPassword });
+                      setResetPwMsg(t('userDetail.passwordResetSuccess'));
+                      setNewPassword('');
+                    } catch (err: any) {
+                      setResetPwMsg(err.response?.data?.message || t('userDetail.passwordResetFailed'));
+                    } finally {
+                      setResetPwLoading(false);
+                    }
+                  }}
+                  className="flex-1 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold text-sm hover:bg-[#c4a030] disabled:opacity-50"
+                >
+                  {resetPwLoading ? t('userDetail.processing') : t('userDetail.resetPassword')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Card */}
         <div className="bg-[#1e293b] p-6 rounded-xl border border-[#334155]">

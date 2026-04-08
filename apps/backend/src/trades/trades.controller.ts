@@ -75,6 +75,13 @@ export class TradesController {
     return this.tradesService.adminCloseTrade(tradeId);
   }
 
+  @Get('admin/dashboard-stats')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  getDashboardStats() {
+    return this.tradesService.getAdminDashboardStats();
+  }
+
   @Get('all')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -82,11 +89,17 @@ export class TradesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('userId') userId?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
   ) {
     return this.tradesService.getAllTrades(
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 20,
       status,
+      userId,
+      fromDate,
+      toDate,
     );
   }
 

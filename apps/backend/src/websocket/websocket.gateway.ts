@@ -24,6 +24,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(WsGateway.name);
   private userSockets = new Map<string, Set<string>>(); // userId -> Set<socketId>
+  private userRoles = new Map<string, string>(); // userId -> role
 
   constructor(
     private jwtService: JwtService,
@@ -37,7 +38,11 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         client.handshake.headers?.authorization?.replace('Bearer ', '');
 
       if (!token) {
-        client.disconnect();
+        // Allow guest connections (prices only, no user-specific events)
+        client.data.role = 'GUEST';
+        client.emit('authenticated', { success: true, guest: true });
+        this.logger.log(`Guest client connected: ${client.id}`);
+        this.broadcastOnlineCount();
         return;
       }
 
@@ -48,11 +53,12 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.data.userId = payload.sub;
       client.data.role = payload.role;
 
-      // Track user's sockets
+      // Track user's sockets and role
       if (!this.userSockets.has(payload.sub)) {
         this.userSockets.set(payload.sub, new Set());
       }
       this.userSockets.get(payload.sub)!.add(client.id);
+      this.userRoles.set(payload.sub, payload.role);
 
       client.join(`user:${payload.sub}`);
 
@@ -65,6 +71,9 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('authenticated', { success: true });
 
       this.logger.log(`Client connected: ${client.id} (user: ${payload.sub}, role: ${payload.role})`);
+
+      // Broadcast updated online count
+      this.broadcastOnlineCount();
     } catch {
       client.emit('authenticated', { success: false });
       client.disconnect();
@@ -77,9 +86,33 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.userSockets.get(userId)?.delete(client.id);
       if (this.userSockets.get(userId)?.size === 0) {
         this.userSockets.delete(userId);
+        this.userRoles.delete(userId);
       }
     }
     this.logger.log(`Client disconnected: ${client.id}`);
+
+    // Broadcast updated online count
+    this.broadcastOnlineCount();
+  }
+
+  // --- Online users count ---
+
+  private getOnlineUserCount(): number {
+    let count = 0;
+    for (const [userId] of this.userSockets) {
+      if (this.userRoles.get(userId) !== 'ADMIN') {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private broadcastOnlineCount() {
+    const count = this.getOnlineUserCount();
+    // Send to admins
+    this.emitToAdmins('admin:online-users', { count });
+    // Send to all clients
+    this.server.emit('online:count', { count });
   }
 
   @SubscribeMessage('subscribe:prices')
@@ -144,32 +177,26 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // --- Admin-specific methods ---
 
-  /** Emit to all connected admin clients */
   emitToAdmins(event: string, data: any) {
     this.server.to('room:admin').emit(event, data);
   }
 
-  /** Notify admins of a trade opened */
   emitAdminTradeOpened(trade: any) {
     this.emitToAdmins('admin:trade:opened', trade);
   }
 
-  /** Notify admins of a trade closed */
   emitAdminTradeClosed(trade: any) {
     this.emitToAdmins('admin:trade:closed', trade);
   }
 
-  /** Stream P&L update to admins */
   emitAdminTradePnl(pnlData: any) {
     this.emitToAdmins('admin:trade:pnl', pnlData);
   }
 
-  /** Stream MT5 positions to admins */
   emitAdminMtPositions(positions: any[]) {
     this.emitToAdmins('admin:mt:positions', positions);
   }
 
-  /** Stream price updates to admins */
   emitAdminPriceUpdate(prices: any[]) {
     this.emitToAdmins('admin:prices', prices);
   }

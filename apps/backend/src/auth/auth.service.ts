@@ -28,18 +28,24 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isDebug = this.configService.get<string>('OTP_DEBUG') === 'true';
-    const otpCode = isDebug ? '0000' : this.generateOtp();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
+    const tokens = await this.generateTokens(user.id, user.role);
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { otpCode, otpExpiresAt },
+      data: { refreshToken: hashedRefreshToken },
     });
 
-    // In production, send OTP via SMS here
-
-    return { message: 'OTP sent', phone: user.phone };
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    };
   }
 
   async verifyOtp(phone: string, code: string) {
@@ -147,6 +153,42 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  async directLogin(phone: string, password: string) {
+    const isDebug = this.configService.get<string>('OTP_DEBUG') === 'true';
+    if (!isDebug) {
+      throw new BadRequestException('Direct login is not available');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const tokens = await this.generateTokens(user.id, user.role);
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken: hashedRefreshToken },
+    });
+
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    };
   }
 
   private generateOtp(): string {

@@ -109,6 +109,19 @@ export class UsersService {
     });
   }
 
+  async resetPassword(id: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new ConflictException('Password must be at least 6 characters');
+    }
+    await this.findOne(id);
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: hashed },
+    });
+    return { message: 'Password updated successfully' };
+  }
+
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.user.update({

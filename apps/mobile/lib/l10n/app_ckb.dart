@@ -1,0 +1,89 @@
+const Map<String, String> ckb = {
+  // App
+  'appName': 'ئازین',
+
+  // Auth
+  'phoneNumber': 'ژمارەی مۆبایل',
+  'password': 'وشەی نهێنی',
+  'login': 'چوونە ژوورەوە',
+  'required': 'پێویستە',
+  'minChars': 'لانیکەم ٦ پیت',
+  'logout': 'چوونە دەرەوە',
+  'logoutConfirm': 'دڵنیایت لە چوونە دەرەوە؟',
+  'cancel': 'پاشگەزبوونەوە',
+
+  // Dashboard
+  'dashboard': 'داشبۆرد',
+  'accountBalance': 'باڵانسی هەژمار',
+  'monthlyPnl': 'قازانج/زەرەری مانگانە',
+  'commission': 'کۆمیسیۆن',
+  'openTrades': 'مامەڵە کراوەکان',
+  'thisMonth': 'ئەم مانگە',
+  'marketOpen': 'بازاڕ کراوەیە',
+  'marketClosed': 'بازاڕ داخراوە',
+  'waitingMarketData': 'چاوەڕوانی زانیاری بازاڕ...',
+  'online': 'ئۆنلاین',
+
+  // Symbols / Trade
+  'trade': 'مامەڵە',
+  'all': 'هەمووی',
+  'noSymbols': 'هیچ هێمایەک بەردەست نییە',
+  'waitingPrice': 'چاوەڕوانی نرخی ڕاستەوخۆ...',
+  'live': 'ڕاستەوخۆ',
+  'bid': 'فرۆشتن',
+  'ask': 'کڕین',
+  'open': 'کراوە',
+  'closed': 'داخراوە',
+
+  // Trade Detail
+  'buy': 'کڕین',
+  'openingTrade': 'کردنەوەی مامەڵە...',
+  'amount': 'بڕ',
+  'price': 'نرخ',
+  'totalCost': 'تێچووی گشتی',
+  'viewPositions': 'بینین و بەڕێوەبردنی مامەڵە کراوەکان لە تابی مامەڵەکان',
+  'tradeOpened': 'مامەڵە بە سەرکەوتوویی کرایەوە!',
+
+  // Positions
+  'positions': 'مامەڵەکان',
+  'history': 'مێژوو',
+  'noOpenPositions': 'هیچ مامەڵەیەکی کراوە نییە',
+  'noTradeHistory': 'مێژووی مامەڵە نییە',
+  'tapHistoryToLoad': 'تابی مێژوو دابگرە بۆ بارکردن',
+  'positionsCount': 'مامەڵە',
+  'pnl': 'قازانج/زەرەر',
+  'openLabel': 'کردنەوە',
+  'current': 'ئێستا',
+  'close': 'داخستن',
+  'closePosition': 'داخستنی مامەڵە',
+  'closeConfirm': 'داخستنی مامەڵەی {symbol}؟',
+  'retry': 'هەوڵدانەوە',
+
+  // Profile
+  'profile': 'پرۆفایل',
+  'editProfile': 'دەستکاری پرۆفایل',
+  'updateName': 'نوێکردنەوەی ناو',
+  'phoneLabel': 'ژمارەی مۆبایل',
+  'verified': 'پشتڕاستکراوە',
+  'privacyPolicy': 'سیاسەتی تایبەتمەندی',
+  'appVersion': 'وەشانی ئەپ',
+  'firstName': 'ناوی یەکەم',
+  'lastName': 'ناوی خێزان',
+  'save': 'پاشەکەوتکردن',
+  'balance': 'باڵانس',
+  'noPrivacyPolicy': 'سیاسەتی تایبەتمەندی بەردەست نییە.',
+
+  // Bottom Nav
+  'navDashboard': 'داشبۆرد',
+  'navTrade': 'مامەڵە',
+  'navPositions': 'مامەڵەکان',
+  'navProfile': 'پرۆفایل',
+
+  // Trade modes
+  'modeDisabled': 'ناچالاک',
+  'modeLongOnly': 'کڕین تەنها',
+  'modeShortOnly': 'فرۆشتن تەنها',
+  'modeCloseOnly': 'داخستن تەنها',
+  'modeOpen': 'کراوە',
+  'modeUnknown': 'نەزانراو',
+};

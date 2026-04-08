@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: BlocListener<AuthBloc, AuthState>(
@@ -45,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
                     const Icon(Icons.show_chart, size: 80, color: Color(0xFFD4AF37)),
                     const SizedBox(height: 16),
                     Text(
-                      'Azin Forex',
+                      t.tr('appName'),
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             color: const Color(0xFFD4AF37),
                             fontWeight: FontWeight.bold,
@@ -55,18 +57,18 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                        prefixIcon: Icon(Icons.phone),
+                      decoration: InputDecoration(
+                        labelText: t.tr('phoneNumber'),
+                        prefixIcon: const Icon(Icons.phone),
                       ),
-                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                      validator: (v) => v == null || v.isEmpty ? t.tr('required') : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: t.tr('password'),
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
@@ -74,7 +76,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       validator: (v) =>
-                          v == null || v.length < 6 ? 'Min 6 characters' : null,
+                          v == null || v.length < 6 ? t.tr('minChars') : null,
                     ),
                     const SizedBox(height: 32),
                     BlocBuilder<AuthBloc, AuthState>(
@@ -98,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
                                     width: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2),
                                   )
-                                : const Text('Login'),
+                                : Text(t.tr('login')),
                           ),
                         );
                       },

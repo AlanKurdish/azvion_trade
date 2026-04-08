@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/profile_datasource.dart';
+import '../../../../core/network/websocket_client.dart';
 
 abstract class ProfileEvent extends Equatable {
   @override
@@ -37,15 +39,21 @@ class ProfileError extends ProfileState {
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final ProfileDatasource _datasource;
+  final WebSocketClient _wsClient;
+  StreamSubscription? _balanceSub;
 
-  ProfileBloc(this._datasource) : super(ProfileInitial()) {
+  ProfileBloc(this._datasource, this._wsClient) : super(ProfileInitial()) {
     on<LoadProfile>((event, emit) async {
-      emit(ProfileLoading());
+      if (state is! ProfileLoaded && state is! ProfileUpdated) {
+        emit(ProfileLoading());
+      }
       try {
         final profile = await _datasource.getProfile();
         emit(ProfileLoaded(profile));
       } catch (e) {
-        emit(ProfileError(e.toString()));
+        if (state is! ProfileLoaded) {
+          emit(ProfileError(e.toString()));
+        }
       }
     });
 
@@ -62,5 +70,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         emit(ProfileError(e.toString()));
       }
     });
+
+    // Auto-refresh profile when balance changes
+    _balanceSub = _wsClient.on('balance:updated').listen((_) {
+      add(LoadProfile());
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _balanceSub?.cancel();
+    return super.close();
   }
 }

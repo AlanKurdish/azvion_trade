@@ -16,7 +16,7 @@ export default function SymbolsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
     name: '', displayName: '', mtSymbol: '',
-    lotSize: '', amount: '', price: '', commission: '', isTradable: false,
+    lotSize: '', amount: '', amountLabel: '', price: '', commission: '', isTradable: false,
   });
 
   // MT symbols picker
@@ -58,6 +58,7 @@ export default function SymbolsPage() {
       mtSymbol: mt.symbol,
       lotSize: '1',
       amount: '1',
+      amountLabel: '',
       price: '',
       commission: '0',
       isTradable: false,
@@ -69,22 +70,24 @@ export default function SymbolsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
+    const payload: any = {
       ...form,
       lotSize: parseFloat(form.lotSize),
       amount: parseFloat(form.amount),
       price: parseFloat(form.price),
       commission: parseFloat(form.commission || '0'),
     };
+    if (!payload.amountLabel) delete payload.amountLabel;
 
     if (editing) {
-      await api.patch(`/symbols/${editing.id}`, payload);
+      const { mtSymbol: _, ...updatePayload } = payload;
+      await api.patch(`/symbols/${editing.id}`, updatePayload);
     } else {
       await api.post('/symbols', payload);
     }
     setShowForm(false);
     setEditing(null);
-    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', price: '', commission: '', isTradable: false });
+    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', price: '', commission: '', isTradable: false });
     loadSymbols();
   };
 
@@ -92,8 +95,8 @@ export default function SymbolsPage() {
     setEditing(sym);
     setForm({
       name: sym.name, displayName: sym.displayName, mtSymbol: sym.mtSymbol,
-      lotSize: String(sym.lotSize), amount: String(sym.amount), price: String(sym.price),
-      commission: String(sym.commission), isTradable: sym.isTradable,
+      lotSize: String(sym.lotSize), amount: String(sym.amount), amountLabel: sym.amountLabel || '',
+      price: String(sym.price), commission: String(sym.commission), isTradable: sym.isTradable,
     });
     setShowForm(true);
   };
@@ -105,8 +108,12 @@ export default function SymbolsPage() {
 
   const deleteSymbol = async (sym: any) => {
     if (!confirm(t('symbols.deleteConfirm', { name: sym.displayName, symbol: sym.mtSymbol }))) return;
-    await api.delete(`/symbols/${sym.id}`);
-    loadSymbols();
+    try {
+      await api.delete(`/symbols/${sym.id}`);
+      loadSymbols();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete symbol');
+    }
   };
 
   const filteredMt = mtSearch
@@ -126,7 +133,7 @@ export default function SymbolsPage() {
           <button onClick={openAddFromMt} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
             <Download size={18} /> {t('symbols.importMt5')}
           </button>
-          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', price: '', commission: '', isTradable: false }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
+          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', price: '', commission: '', isTradable: false }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
             <Plus size={18} /> {t('symbols.addManual')}
           </button>
         </div>
@@ -152,7 +159,7 @@ export default function SymbolsPage() {
                 <td className="px-6 py-3 font-semibold">{sym.displayName}</td>
                 <td className="px-6 py-3 text-gray-400">{sym.mtSymbol}</td>
                 <td className="px-6 py-3">{sym.lotSize}</td>
-                <td className="px-6 py-3">{sym.amount}</td>
+                <td className="px-6 py-3">{sym.amount}{sym.amountLabel && <span className="text-gray-400 text-xs ms-1">({sym.amountLabel})</span>}</td>
                 <td className="px-6 py-3 text-[#D4AF37] font-bold">${sym.price}</td>
                 <td className="px-6 py-3">${sym.commission}</td>
                 <td className="px-6 py-3">
@@ -225,17 +232,16 @@ export default function SymbolsPage() {
                         <td className="px-4 py-2.5 font-semibold">{mt.symbol}</td>
                         <td className="px-4 py-2.5 text-gray-400 text-sm">{mt.description}</td>
                         <td className="px-4 py-2.5 text-gray-400">{mt.digits}</td>
-                        <td className="px-4 py-2.5 text-right">
-                          {addedMtSymbols.has(mt.symbol) ? (
+                        <td className="px-4 py-2.5 text-right flex items-center gap-2 justify-end">
+                          {addedMtSymbols.has(mt.symbol) && (
                             <span className="text-xs text-green-400 bg-green-500/10 px-2 py-1 rounded">{t('symbols.added')}</span>
-                          ) : (
-                            <button
-                              onClick={() => selectMtSymbol(mt)}
-                              className="text-sm px-3 py-1 bg-[#D4AF37] text-black rounded font-semibold hover:bg-[#c4a030]"
-                            >
-                              {t('symbols.select')}
-                            </button>
                           )}
+                          <button
+                            onClick={() => selectMtSymbol(mt)}
+                            className="text-sm px-3 py-1 bg-[#D4AF37] text-black rounded font-semibold hover:bg-[#c4a030]"
+                          >
+                            {t('symbols.select')}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -269,9 +275,10 @@ export default function SymbolsPage() {
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('symbols.namePlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
               <input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder={t('symbols.displayNamePlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
-              <input value={form.mtSymbol} onChange={(e) => setForm({ ...form, mtSymbol: e.target.value })} placeholder={t('symbols.mtSymbolPlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white read-only:opacity-60" readOnly={!!form.mtSymbol && !editing} required />
+              <input value={form.mtSymbol} onChange={(e) => setForm({ ...form, mtSymbol: e.target.value })} placeholder={t('symbols.mtSymbolPlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white read-only:opacity-60" readOnly={!!editing || (!!form.mtSymbol && !editing)} required />
               <input value={form.lotSize} onChange={(e) => setForm({ ...form, lotSize: e.target.value })} placeholder={t('symbols.lotSizePlaceholder')} type="number" step="0.01" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
               <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={t('symbols.amountPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
+              <input value={form.amountLabel} onChange={(e) => setForm({ ...form, amountLabel: e.target.value })} placeholder={t('symbols.amountLabelPlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
               <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder={t('symbols.pricePlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
               <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={t('symbols.commissionPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
               <label className="flex items-center gap-2">

@@ -11,35 +11,71 @@ class WebSocketClient {
   bool get isConnected => _socket?.connected ?? false;
 
   Future<void> connect() async {
-    final token = await _storage.read(key: 'access_token');
-    if (token == null) return;
+    // Dispose previous socket if exists (but keep controllers alive)
+    if (_socket != null) {
+      _socket!.clearListeners();
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
 
-    _socket = io.io(
-      ApiConstants.wsUrl,
-      io.OptionBuilder()
-          .setTransports(['websocket'])
-          .setAuth({'token': token})
-          .disableAutoConnect()
-          .build(),
-    );
+    final token = await _storage.read(key: 'access_token');
+
+    final builder = io.OptionBuilder()
+        .setTransports(['websocket', 'polling'])
+        .enableReconnection()
+        .setReconnectionAttempts(50)
+        .setReconnectionDelay(2000)
+        .enableForceNew()
+        .disableAutoConnect();
+
+    if (token != null) {
+      builder.setAuth({'token': token});
+    }
+
+    print('[WS] Connecting to ${ApiConstants.wsUrl} (token: ${token != null ? 'yes' : 'no'})');
+
+    _socket = io.io(ApiConstants.wsUrl, builder.build());
 
     _socket!.onConnect((_) {
-      print('WebSocket connected');
+      print('[WS] Connected to ${ApiConstants.wsUrl}');
     });
 
-    _socket!.onDisconnect((_) {
-      print('WebSocket disconnected');
+    _socket!.onDisconnect((reason) {
+      print('[WS] Disconnected: $reason');
+    });
+
+    _socket!.onConnectError((error) {
+      print('[WS] Connection error: $error');
+    });
+
+    _socket!.onError((error) {
+      print('[WS] Error: $error');
     });
 
     _socket!.on('authenticated', (data) {
-      if (data['success'] != true) {
-        disconnect();
+      if (data is Map && data['success'] == true) {
+        print('[WS] Authenticated (guest: ${data['guest'] ?? false})');
+      } else {
+        print('[WS] Auth failed, disconnecting');
+        _socket?.disconnect();
       }
     });
 
-    // Price updates
+    // Price updates (room-based, after subscribe:prices)
     _socket!.on('price:update', (data) {
       _emit('price:update', data);
+    });
+
+    // Price broadcast (all clients, no subscription needed)
+    _socket!.on('price:update:all', (data) {
+      if (data is List) {
+        for (final p in data) {
+          _emit('price:update', p);
+        }
+      } else if (data is Map) {
+        _emit('price:update', data);
+      }
     });
 
     // Trade P&L
@@ -60,17 +96,19 @@ class WebSocketClient {
       _emit('balance:updated', data);
     });
 
+    // Online users count
+    _socket!.on('online:count', (data) {
+      _emit('online:count', data);
+    });
+
     _socket!.connect();
   }
 
   void disconnect() {
+    _socket?.clearListeners();
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
-    for (final controller in _controllers.values) {
-      controller.close();
-    }
-    _controllers.clear();
   }
 
   Stream<dynamic> on(String event) {
@@ -79,6 +117,7 @@ class WebSocketClient {
   }
 
   void subscribePrices(List<String> mtSymbols) {
+    print('[WS] Subscribing to prices: $mtSymbols');
     _socket?.emit('subscribe:prices', {'symbols': mtSymbols});
   }
 

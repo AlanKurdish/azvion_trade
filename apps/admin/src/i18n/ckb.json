@@ -8,6 +8,7 @@
     "trades": "مامەڵەکان",
     "symbols": "هێماکان",
     "settings": "ڕێکخستنەکان",
+    "history": "مێژووی مامەڵەکان",
     "logout": "چوونە دەرەوە"
   },
 
@@ -27,8 +28,29 @@
 
   "dashboard": {
     "title": "داشبۆرد",
+    "loadError": "بارکردنی داتای داشبۆرد سەرنەکەوت",
+    "totalRevenue": "کۆی داهات",
+    "totalPnl": "کۆی قازانج/زەرەر",
+    "openTrades": "مامەڵە کراوەکان",
+    "closedTrades": "مامەڵە داخراوەکان",
+    "activeUsers": "بەکارهێنەرە چالاکەکان",
     "totalUsers": "کۆی بەکارهێنەران",
-    "totalTrades": "کۆی مامەڵەکان"
+    "totalDeposits": "کۆی واریزەکان",
+    "totalWithdrawals": "کۆی دەرهێنانەکان",
+    "platformBalance": "باڵانسی پلاتفۆرم",
+    "monthlyRevenue": "داهاتی مانگانە (٦ مانگی ڕابردوو)",
+    "monthlyPnl": "قازانج/زەرەری مانگانە (٦ مانگی ڕابردوو)",
+    "monthlyVolume": "قەبارەی مامەڵەی مانگانە",
+    "revenue": "داهات",
+    "pnl": "قازانج/زەرەر",
+    "topSymbols": "باشترین هێماکان",
+    "trades": "مامەڵە",
+    "winRate": "ڕێژەی بردنەوە",
+    "tradeDistribution": "دابەشبوونی مامەڵەکان",
+    "open": "کراوە",
+    "closed": "داخراوە",
+    "recentTrades": "دوایین مامەڵەکان",
+    "noData": "هیچ داتایەک نییە"
   },
 
   "users": {
@@ -113,7 +135,12 @@
     "noTransactions": "هیچ مامەڵەیەک نییە",
     "page": "لاپەڕە {{page}} · {{total}} کۆی گشتی",
     "prev": "پێشوو",
-    "next": "دواتر"
+    "next": "دواتر",
+    "resetPassword": "گۆڕینی وشەی نهێنی",
+    "newPassword": "وشەی نهێنی نوێ",
+    "minChars": "لانیکەم ٦ پیت",
+    "passwordResetSuccess": "وشەی نهێنی بە سەرکەوتوویی نوێ کرایەوە",
+    "passwordResetFailed": "گۆڕینی وشەی نهێنی سەرنەکەوت"
   },
 
   "trades": {
@@ -133,6 +160,7 @@
     "cancel": "پاشگەزبوونەوە",
     "opening": "کردنەوە...",
     "livePrices": "نرخە ڕاستەوخۆکان",
+    "openTradesTab": "مامەڵە کراوەکان",
     "appTrades": "مامەڵەکانی ئەپ",
     "mtPositions": "پۆزیشنەکانی MT5",
     "noSymbols": "هیچ هێمایەکی مامەڵەپێکراو نییە. بڕۆ بۆ لاپەڕەی هێماکان بۆ زیادکردن.",
@@ -205,7 +233,8 @@
     "displayNamePlaceholder": "ناوی نیشاندان (بۆ نموونە: زێڕ)",
     "mtSymbolPlaceholder": "هێمای MT",
     "lotSizePlaceholder": "قەبارەی لۆت",
-    "amountPlaceholder": "بڕ (بۆ نموونە: ١٥٥٠ گرام)",
+    "amountPlaceholder": "بڕ (بۆ نموونە: ١٥٥٠)",
+    "amountLabelPlaceholder": "ناوی بڕ (بۆ نموونە: ١ کیلۆ، ٥٠٠ گرام)",
     "pricePlaceholder": "نرخ بۆ کڕیار (دۆلار)",
     "commissionPlaceholder": "کۆمیسیۆن (دۆلار)",
     "cancel": "پاشگەزبوونەوە",
@@ -216,16 +245,69 @@
 
   "settings": {
     "title": "ڕێکخستنەکان",
-    "mtConnection": "پەیوەندی میتاتریدەر",
-    "connectedTo": "پەیوەندی کراوە بە {{id}} ({{platform}})",
+    "mtConnection": "پەیوەندی میتاتریدەر ٥",
+    "connected": "پەیوەندی هەیە",
     "disconnect": "پچڕاندنی پەیوەندی",
-    "notConnected": "پەیوەندی نییە",
-    "accountId": "ناسنامەی هەژماری MetaApi",
-    "token": "تۆکنی MetaApi",
+    "notConnected": "پەیوەندی نییە بە MT5",
+    "login": "ژمارەی هەژمار",
+    "server": "سێرڤەر",
+    "balance": "باڵانس",
+    "equity": "هاوسەنگی",
+    "loginPlaceholder": "ژمارەی هەژماری MT5 (بۆ نموونە: 139876)",
+    "passwordPlaceholder": "وشەی نهێنی MT5",
+    "serverPlaceholder": "سێرڤەری بڕۆکەر (بۆ نموونە: WingoGroupLtd-Server)",
     "connect": "پەیوەندیکردن",
+    "connecting": "پەیوەندیکردن...",
+    "autoConnect": "پەیوەندی خۆکار (دۆزینەوەی MT5 ی کراوە)",
+    "orManual": "یان زانیاری دەستی بنووسە",
     "privacyPolicy": "سیاسەتی تایبەتمەندی",
     "save": "پاشەکەوتکردن",
     "saved": "پاشەکەوت کرا!"
+  },
+
+  "history": {
+    "title": "مێژووی مامەڵەکان",
+    "subtitle": "{{count}} مامەڵە بە گشتی",
+    "refresh": "نوێکردنەوە",
+    "filters": "فلتەرکردن",
+    "clearFilters": "پاککردنەوەی فلتەرەکان",
+    "filterUser": "بەکارهێنەر",
+    "allUsers": "هەموو بەکارهێنەران",
+    "filterStatus": "بارودۆخ",
+    "allStatus": "هەموو بارودۆخەکان",
+    "open": "کراوە",
+    "closed": "داخراوە",
+    "fromDate": "لە بەرواری",
+    "toDate": "هەتا بەرواری",
+    "selectDate": "بەروار هەڵبژێرە...",
+    "user": "بەکارهێنەر",
+    "symbol": "هێما",
+    "type": "جۆر",
+    "lot": "لۆت",
+    "openPrice": "نرخی کردنەوە",
+    "currentClose": "ئێستا / داخستن",
+    "pnl": "قازانج/زەرەر",
+    "commission": "کۆمیسیۆن",
+    "mtOrder": "فەرمانی MT",
+    "status": "بارودۆخ",
+    "date": "بەروار",
+    "actions": "کردارەکان",
+    "closing": "داخستن...",
+    "close": "داخستن",
+    "noTrades": "هیچ مامەڵەیەک نەدۆزرایەوە",
+    "page": "لاپەڕە {{page}} لە {{total}}",
+    "prev": "پێشوو",
+    "next": "دواتر",
+    "confirmClose": "دڵنیایت لە داخستنی ئەم مامەڵەیە؟",
+    "closeFailed": "داخستنی مامەڵە سەرنەکەوت"
+  },
+
+  "mt5Widget": {
+    "title": "هەژماری MT5",
+    "balance": "باڵانس",
+    "equity": "هاوسەنگی",
+    "floatingPnl": "قازانج/زەرەری شتاوە",
+    "disconnected": "MT5 پەیوەندی نییە"
   },
 
   "common": {

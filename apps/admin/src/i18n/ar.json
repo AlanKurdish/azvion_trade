@@ -8,6 +8,7 @@
     "trades": "الصفقات",
     "symbols": "الرموز",
     "settings": "الإعدادات",
+    "history": "سجل الصفقات",
     "logout": "تسجيل الخروج"
   },
 
@@ -27,8 +28,29 @@
 
   "dashboard": {
     "title": "الرئيسية",
+    "loadError": "فشل في تحميل بيانات لوحة التحكم",
+    "totalRevenue": "إجمالي الإيرادات",
+    "totalPnl": "إجمالي الربح/الخسارة",
+    "openTrades": "الصفقات المفتوحة",
+    "closedTrades": "الصفقات المغلقة",
+    "activeUsers": "المستخدمين النشطين",
     "totalUsers": "إجمالي المستخدمين",
-    "totalTrades": "إجمالي الصفقات"
+    "totalDeposits": "إجمالي الإيداعات",
+    "totalWithdrawals": "إجمالي السحوبات",
+    "platformBalance": "رصيد المنصة",
+    "monthlyRevenue": "الإيرادات الشهرية (آخر 6 أشهر)",
+    "monthlyPnl": "الربح/الخسارة الشهري (آخر 6 أشهر)",
+    "monthlyVolume": "حجم التداول الشهري",
+    "revenue": "الإيرادات",
+    "pnl": "الربح/الخسارة",
+    "topSymbols": "أفضل الرموز",
+    "trades": "صفقات",
+    "winRate": "نسبة الربح",
+    "tradeDistribution": "توزيع الصفقات",
+    "open": "مفتوحة",
+    "closed": "مغلقة",
+    "recentTrades": "أحدث الصفقات",
+    "noData": "لا توجد بيانات بعد"
   },
 
   "users": {
@@ -113,7 +135,12 @@
     "noTransactions": "لا توجد معاملات بعد",
     "page": "صفحة {{page}} · {{total}} إجمالي",
     "prev": "السابق",
-    "next": "التالي"
+    "next": "التالي",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "newPassword": "كلمة المرور الجديدة",
+    "minChars": "6 أحرف على الأقل",
+    "passwordResetSuccess": "تم تحديث كلمة المرور بنجاح",
+    "passwordResetFailed": "فشل في إعادة تعيين كلمة المرور"
   },
 
   "trades": {
@@ -133,6 +160,7 @@
     "cancel": "إلغاء",
     "opening": "جاري الفتح...",
     "livePrices": "الأسعار المباشرة",
+    "openTradesTab": "الصفقات المفتوحة",
     "appTrades": "صفقات التطبيق",
     "mtPositions": "مراكز MT5",
     "noSymbols": "لا توجد رموز قابلة للتداول. اذهب إلى صفحة الرموز لإضافة بعضها.",
@@ -205,7 +233,8 @@
     "displayNamePlaceholder": "اسم العرض (مثال: ذهب)",
     "mtSymbolPlaceholder": "رمز MT",
     "lotSizePlaceholder": "حجم اللوت",
-    "amountPlaceholder": "الكمية (مثال: 1550 غرام)",
+    "amountPlaceholder": "الكمية (مثال: 1550)",
+    "amountLabelPlaceholder": "وصف الكمية (مثال: 1 كجم، 500 غرام)",
     "pricePlaceholder": "السعر للعميل (دولار)",
     "commissionPlaceholder": "العمولة (دولار)",
     "cancel": "إلغاء",
@@ -216,16 +245,69 @@
 
   "settings": {
     "title": "الإعدادات",
-    "mtConnection": "اتصال ميتاتريدر",
-    "connectedTo": "متصل بـ {{id}} ({{platform}})",
+    "mtConnection": "اتصال ميتاتريدر 5",
+    "connected": "متصل",
     "disconnect": "قطع الاتصال",
-    "notConnected": "غير متصل",
-    "accountId": "معرف حساب MetaApi",
-    "token": "رمز MetaApi",
+    "notConnected": "غير متصل بـ MT5",
+    "login": "رقم الحساب",
+    "server": "السيرفر",
+    "balance": "الرصيد",
+    "equity": "حقوق الملكية",
+    "loginPlaceholder": "رقم حساب MT5 (مثال: 139876)",
+    "passwordPlaceholder": "كلمة مرور MT5",
+    "serverPlaceholder": "سيرفر الوسيط (مثال: WingoGroupLtd-Server)",
     "connect": "اتصال",
+    "connecting": "جاري الاتصال...",
+    "autoConnect": "اتصال تلقائي (كشف MT5 المفتوح)",
+    "orManual": "أو أدخل بيانات الاعتماد يدوياً",
     "privacyPolicy": "سياسة الخصوصية",
     "save": "حفظ",
     "saved": "تم الحفظ!"
+  },
+
+  "history": {
+    "title": "سجل الصفقات",
+    "subtitle": "{{count}} صفقة إجمالي",
+    "refresh": "تحديث",
+    "filters": "تصفية",
+    "clearFilters": "مسح التصفية",
+    "filterUser": "المستخدم",
+    "allUsers": "جميع المستخدمين",
+    "filterStatus": "الحالة",
+    "allStatus": "جميع الحالات",
+    "open": "مفتوحة",
+    "closed": "مغلقة",
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ",
+    "selectDate": "اختر تاريخ...",
+    "user": "المستخدم",
+    "symbol": "الرمز",
+    "type": "النوع",
+    "lot": "اللوت",
+    "openPrice": "سعر الافتتاح",
+    "currentClose": "الحالي / الإغلاق",
+    "pnl": "الربح/الخسارة",
+    "commission": "العمولة",
+    "mtOrder": "أمر MT",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "actions": "الإجراءات",
+    "closing": "جاري الإغلاق...",
+    "close": "إغلاق",
+    "noTrades": "لم يتم العثور على صفقات",
+    "page": "صفحة {{page}} من {{total}}",
+    "prev": "السابق",
+    "next": "التالي",
+    "confirmClose": "هل أنت متأكد من إغلاق هذه الصفقة؟",
+    "closeFailed": "فشل في إغلاق الصفقة"
+  },
+
+  "mt5Widget": {
+    "title": "حساب MT5",
+    "balance": "الرصيد",
+    "equity": "حقوق الملكية",
+    "floatingPnl": "الربح/الخسارة العائم",
+    "disconnected": "MT5 غير متصل"
   },
 
   "common": {

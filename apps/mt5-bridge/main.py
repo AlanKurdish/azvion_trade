@@ -83,13 +83,17 @@ async def stream_prices():
         prices = []
         for symbol in list(streaming_symbols):
             tick = mt5.symbol_info_tick(symbol)
+            info = mt5.symbol_info(symbol)
             if tick:
+                # trade_mode: 0=disabled, 4=close_only → market closed for this symbol
+                trade_mode = info.trade_mode if info else 0
                 prices.append({
                     "symbol": symbol,
                     "bid": tick.bid,
                     "ask": tick.ask,
                     "last": tick.last,
                     "time": tick.time,
+                    "trade_mode": trade_mode,
                 })
 
         if prices:
@@ -238,6 +242,15 @@ def connect(req: ConnectRequest):
     return result
 
 
+@app.post("/auto-connect")
+def auto_connect():
+    """Connect to the already-running MT5 terminal without credentials."""
+    result = connect_mt5()
+    if not result["connected"]:
+        raise HTTPException(400, result.get("error", "No MT5 terminal running or no account logged in"))
+    return result
+
+
 @app.post("/disconnect")
 def disconnect():
     disconnect_mt5()
@@ -261,6 +274,30 @@ def get_symbols():
         }
         for s in symbols
     ]
+
+
+@app.get("/market-status")
+def get_market_status():
+    """Get trade_mode for all subscribed symbols. trade_mode meanings:
+    0 = DISABLED (market closed), 1 = LONG_ONLY, 2 = SHORT_ONLY,
+    3 = CLOSE_ONLY, 4 = FULL (open for trading)
+    """
+    if not connected:
+        raise HTTPException(503, "MT5 not connected")
+    statuses = []
+    for symbol in list(streaming_symbols):
+        info = mt5.symbol_info(symbol)
+        if info:
+            statuses.append({
+                "symbol": info.name,
+                "trade_mode": info.trade_mode,
+                "session_deals": info.session_deals,
+                "session_buy_orders": info.session_buy_orders,
+                "session_sell_orders": info.session_sell_orders,
+                "spread": info.spread,
+                "time": int(info.time) if hasattr(info, 'time') else 0,
+            })
+    return statuses
 
 
 @app.get("/price/{symbol}")

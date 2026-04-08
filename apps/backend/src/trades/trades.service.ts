@@ -67,9 +67,14 @@ export class TradesService {
       mtOrderId = mtResult.positionId || mtResult.orderId;
       mtOpenPrice = mtResult.openPrice || null;
     } catch (error) {
-      throw new BadRequestException(
-        `Failed to open trade on MetaTrader: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      // Make MT5 margin errors clearer
+      if (msg.toLowerCase().includes('not enough money') || msg.toLowerCase().includes('no money')) {
+        throw new BadRequestException(
+          'MT5 account has insufficient margin to open this position. Contact admin to fund the MT5 account.',
+        );
+      }
+      throw new BadRequestException(`Failed to open trade on MetaTrader: ${msg}`);
     }
 
     // Step 2: Record everything in DB transaction
@@ -88,7 +93,8 @@ export class TradesService {
         data: { amount: { decrement: totalCost } },
       });
 
-      // Create trade record (use MT5 open price if available, else admin-set price)
+      // Create trade record
+      // openPrice = MT5 market price; customerPrice = what was deducted from user balance
       const newTrade = await tx.trade.create({
         data: {
           userId,
@@ -96,6 +102,7 @@ export class TradesService {
           type: 'BUY',
           lotSize: symbol.lotSize,
           openPrice: mtOpenPrice ?? symbol.price,
+          customerPrice: symbol.price,
           commission: symbol.commission,
           mtOrderId,
         },
@@ -182,8 +189,9 @@ export class TradesService {
         },
       });
 
-      // Credit balance: original trade price + MT5 actual profit
-      const creditAmount = Number(trade.openPrice) + profitLoss;
+      // Credit balance: the exact customer price deducted on open + MT5 profit/loss
+      const deductedPrice = Number(trade.customerPrice);
+      const creditAmount = deductedPrice + profitLoss;
       await tx.balance.update({
         where: { userId },
         data: { amount: { increment: creditAmount } },
@@ -195,7 +203,7 @@ export class TradesService {
           type: 'TRADE_CLOSE',
           amount: new Prisma.Decimal(creditAmount),
           tradeId,
-          note: `Close ${trade.symbol.displayName} P/L: ${profitLoss.toFixed(2)}`,
+          note: `Close ${trade.symbol.displayName} | Returned: $${deductedPrice} | P/L: ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}`,
         },
       });
 
@@ -333,7 +341,9 @@ export class TradesService {
         },
       });
 
-      const creditAmount = Number(trade.openPrice) + profitLoss;
+      // Credit balance: the exact customer price deducted on open + MT5 profit/loss
+      const deductedPrice = Number(trade.customerPrice);
+      const creditAmount = deductedPrice + profitLoss;
       await tx.balance.update({
         where: { userId: trade.userId },
         data: { amount: { increment: creditAmount } },
@@ -345,7 +355,7 @@ export class TradesService {
           type: 'TRADE_CLOSE',
           amount: new Prisma.Decimal(creditAmount),
           tradeId,
-          note: `Close ${trade.symbol.displayName} P/L: ${profitLoss.toFixed(2)}`,
+          note: `Close ${trade.symbol.displayName} | Returned: $${deductedPrice} | P/L: ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}`,
         },
       });
 
@@ -368,16 +378,34 @@ export class TradesService {
   }
 
   // Admin methods
-  async getAllTrades(page = 1, limit = 20, status?: string) {
+  async getAllTrades(
+    page = 1,
+    limit = 20,
+    status?: string,
+    userId?: string,
+    fromDate?: string,
+    toDate?: string,
+  ) {
     const skip = (page - 1) * limit;
-    const where = status ? { status: status as any } : {};
+    const where: any = {};
+    if (status) where.status = status;
+    if (userId) where.userId = userId;
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        where.createdAt.lte = to;
+      }
+    }
 
     const [trades, total] = await Promise.all([
       this.prisma.trade.findMany({
         where,
         include: {
           user: { select: { phone: true, firstName: true, lastName: true } },
-          symbol: { select: { displayName: true, name: true } },
+          symbol: { select: { displayName: true, name: true, mtSymbol: true } },
         },
         skip,
         take: limit,
@@ -405,5 +433,169 @@ export class TradesService {
     ]);
 
     return { trades, total, page, limit };
+  }
+
+  async getAdminDashboardStats() {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const [
+      openTradesCount,
+      closedTradesCount,
+      totalRevenue,
+      totalPnl,
+      activeUsers,
+      totalUsers,
+      platformBalance,
+      deposits,
+      withdrawals,
+      winCount,
+      loseCount,
+      recentTrades,
+      allClosedTrades,
+      allTrades,
+      topSymbolsRaw,
+    ] = await Promise.all([
+      // Open trades
+      this.prisma.trade.count({ where: { status: 'OPEN' } }),
+      // Closed trades
+      this.prisma.trade.count({ where: { status: 'CLOSED' } }),
+      // Total revenue (commissions)
+      this.prisma.trade.aggregate({
+        _sum: { commission: true },
+      }),
+      // Total P&L
+      this.prisma.trade.aggregate({
+        _sum: { profitLoss: true },
+        where: { status: 'CLOSED' },
+      }),
+      // Active users
+      this.prisma.user.count({ where: { isActive: true, role: 'USER' } }),
+      // Total users
+      this.prisma.user.count({ where: { role: 'USER' } }),
+      // Platform balance
+      this.prisma.balance.aggregate({ _sum: { amount: true } }),
+      // Total deposits
+      this.prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { type: 'DEPOSIT' },
+      }),
+      // Total withdrawals
+      this.prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { type: 'WITHDRAWAL' },
+      }),
+      // Win count
+      this.prisma.trade.count({
+        where: { status: 'CLOSED', profitLoss: { gt: 0 } },
+      }),
+      // Lose count
+      this.prisma.trade.count({
+        where: { status: 'CLOSED', profitLoss: { lte: 0 } },
+      }),
+      // Recent trades
+      this.prisma.trade.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true, phone: true } },
+          symbol: { select: { displayName: true } },
+        },
+      }),
+      // All closed trades for monthly grouping
+      this.prisma.trade.findMany({
+        where: {
+          status: 'CLOSED',
+          createdAt: { gte: sixMonthsAgo },
+        },
+        select: { createdAt: true, commission: true, profitLoss: true },
+      }),
+      // All trades for monthly volume
+      this.prisma.trade.findMany({
+        where: { createdAt: { gte: sixMonthsAgo } },
+        select: { createdAt: true },
+      }),
+      // Top symbols
+      this.prisma.trade.groupBy({
+        by: ['symbolId'],
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 5,
+      }),
+    ]);
+
+    // Build monthly data for last 6 months
+    const monthlyData: Array<{
+      month: string;
+      trades: number;
+      revenue: number;
+      pnl: number;
+    }> = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('en', { month: 'short', year: '2-digit' });
+
+      const monthTrades = allTrades.filter((t) => {
+        const td = new Date(t.createdAt);
+        return td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth();
+      });
+
+      const monthClosed = allClosedTrades.filter((t) => {
+        const td = new Date(t.createdAt);
+        return td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth();
+      });
+
+      monthlyData.push({
+        month: label,
+        trades: monthTrades.length,
+        revenue: monthClosed.reduce((s, t) => s + Number(t.commission || 0), 0),
+        pnl: monthClosed.reduce((s, t) => s + Number(t.profitLoss || 0), 0),
+      });
+    }
+
+    // Resolve top symbols names
+    const symbolIds = topSymbolsRaw.map((s) => s.symbolId);
+    const symbolNames = await this.prisma.symbol.findMany({
+      where: { id: { in: symbolIds } },
+      select: { id: true, displayName: true },
+    });
+    const nameMap = new Map(symbolNames.map((s) => [s.id, s.displayName]));
+
+    const topSymbols = topSymbolsRaw.map((s) => ({
+      name: nameMap.get(s.symbolId) || s.symbolId,
+      trades: s._count.id,
+    }));
+
+    return {
+      kpis: {
+        totalRevenue: Number(totalRevenue._sum.commission || 0),
+        totalPnl: Number(totalPnl._sum.profitLoss || 0),
+        openTrades: openTradesCount,
+        closedTrades: closedTradesCount,
+        activeUsers,
+        totalUsers,
+        platformBalance: Number(platformBalance._sum.amount || 0),
+        totalDeposits: Number(deposits._sum.amount || 0),
+        totalWithdrawals: Math.abs(Number(withdrawals._sum.amount || 0)),
+      },
+      winRate: closedTradesCount > 0
+        ? Math.round((winCount / closedTradesCount) * 100)
+        : 0,
+      monthlyData,
+      topSymbols,
+      recentTrades: recentTrades.map((t) => ({
+        id: t.id,
+        user: t.user?.firstName || t.user?.phone,
+        symbol: t.symbol?.displayName,
+        type: t.type,
+        status: t.status,
+        openPrice: Number(t.openPrice),
+        profitLoss: t.profitLoss ? Number(t.profitLoss) : null,
+        commission: Number(t.commission),
+        date: t.createdAt,
+      })),
+    };
   }
 }

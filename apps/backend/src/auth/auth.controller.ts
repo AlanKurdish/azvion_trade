@@ -16,6 +16,12 @@ export class AuthController {
     return this.authService.login(dto.phone, dto.password);
   }
 
+  @Post('direct-login')
+  @HttpCode(200)
+  directLogin(@Body() dto: LoginDto) {
+    return this.authService.directLogin(dto.phone, dto.password);
+  }
+
   @Post('verify-otp')
   @HttpCode(200)
   verifyOtp(@Body() dto: VerifyOtpDto) {

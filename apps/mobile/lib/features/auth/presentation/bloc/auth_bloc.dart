@@ -19,14 +19,6 @@ class AuthLoginRequested extends AuthEvent {
   List<Object?> get props => [phone, password];
 }
 
-class AuthVerifyOtp extends AuthEvent {
-  final String phone;
-  final String code;
-  AuthVerifyOtp({required this.phone, required this.code});
-  @override
-  List<Object?> get props => [phone, code];
-}
-
 class AuthLogoutRequested extends AuthEvent {}
 
 // States
@@ -37,13 +29,6 @@ abstract class AuthState extends Equatable {
 
 class AuthInitial extends AuthState {}
 class AuthLoading extends AuthState {}
-
-class AuthOtpSent extends AuthState {
-  final String phone;
-  AuthOtpSent({required this.phone});
-  @override
-  List<Object?> get props => [phone];
-}
 
 class AuthAuthenticated extends AuthState {
   final Map<String, dynamic>? user;
@@ -69,7 +54,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this._repository, this._wsClient) : super(AuthInitial()) {
     on<AuthCheckStatus>(_onCheckStatus);
     on<AuthLoginRequested>(_onLogin);
-    on<AuthVerifyOtp>(_onVerifyOtp);
     on<AuthLogoutRequested>(_onLogout);
   }
 
@@ -86,17 +70,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogin(AuthLoginRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      await _repository.login(event.phone, event.password);
-      emit(AuthOtpSent(phone: event.phone));
-    } catch (e) {
-      emit(AuthError(message: _extractError(e)));
-    }
-  }
-
-  Future<void> _onVerifyOtp(AuthVerifyOtp event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
-    try {
-      final result = await _repository.verifyOtp(event.phone, event.code);
+      final result = await _repository.login(event.phone, event.password);
       await _wsClient.connect();
       emit(AuthAuthenticated(user: result['user']));
     } catch (e) {

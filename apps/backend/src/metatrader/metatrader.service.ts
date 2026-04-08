@@ -142,15 +142,19 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async subscribeToTradableSymbols() {
+  /**
+   * Subscribe all tradable symbols to the bridge WS for price streaming.
+   * Public so it can be called when symbols are added/updated.
+   */
+  async subscribeToTradableSymbols() {
     if (!this.priceWs || this.priceWs.readyState !== WebSocket.OPEN) return;
 
     const symbols = await this.prisma.symbol.findMany({
-      where: { isTradable: true },
+      where: { isTradable: true, isDeleted: false },
       select: { mtSymbol: true },
     });
 
-    const symbolNames = symbols.map((s) => s.mtSymbol);
+    const symbolNames = [...new Set(symbols.map((s) => s.mtSymbol))];
     if (symbolNames.length > 0) {
       this.priceWs.send(
         JSON.stringify({ action: 'subscribe', symbols: symbolNames }),
@@ -218,17 +222,30 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
       bid: number;
       ask: number;
       time: number;
+      trade_mode?: number;
     }>,
   ) {
     for (const price of prices) {
-      // Forward to Flutter clients via Socket.IO
-      this.wsGateway.emitPriceUpdate(price.symbol, {
+      const priceData = {
         symbol: price.symbol,
         bid: price.bid,
         ask: price.ask,
         timestamp: price.time,
-      });
+        tradeMode: price.trade_mode ?? 4, // 4 = FULL (open)
+      };
+      // Forward to Flutter clients via Socket.IO (room-based)
+      this.wsGateway.emitPriceUpdate(price.symbol, priceData);
     }
+
+    // Also broadcast to ALL connected clients so Flutter gets prices
+    // even before subscribing to specific rooms
+    this.wsGateway.broadcastToAll('price:update:all', prices.map((p) => ({
+      symbol: p.symbol,
+      bid: p.bid,
+      ask: p.ask,
+      timestamp: p.time,
+      tradeMode: p.trade_mode ?? 4,
+    })));
 
     // Also stream prices to admin room
     this.wsGateway.emitAdminPriceUpdate(
@@ -237,6 +254,7 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
         bid: p.bid,
         ask: p.ask,
         time: p.time,
+        tradeMode: p.trade_mode ?? 4,
       })),
     );
     // P&L is streamed from MT5 positions, NOT calculated from prices
@@ -394,16 +412,63 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
 
   // --- Public API ---
 
-  async connect(accountId: string, token: string): Promise<void> {
+  async connect(login: string, password: string, server: string): Promise<any> {
     try {
-      await this.callBridge('POST', '/connect', {
-        login: parseInt(accountId),
-        password: token,
-        server: '',
+      const result = await this.callBridge<any>('POST', '/connect', {
+        login: parseInt(login),
+        password,
+        server,
       });
       this.connected = true;
       await this.connectPriceStream();
       this.startPositionPolling();
+
+      await this.prisma.mtAccount.upsert({
+        where: { accountId: 'mt5-direct' },
+        update: {
+          isConnected: true,
+          login,
+          brokerServer: server,
+        },
+        create: {
+          accountId: 'mt5-direct',
+          isConnected: true,
+          platform: 'mt5',
+          login,
+          brokerServer: server,
+        },
+      });
+
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async autoConnect(): Promise<any> {
+    try {
+      const result = await this.callBridge<any>('POST', '/auto-connect');
+      this.connected = true;
+      await this.connectPriceStream();
+      this.startPositionPolling();
+
+      await this.prisma.mtAccount.upsert({
+        where: { accountId: 'mt5-direct' },
+        update: {
+          isConnected: true,
+          login: String(result.login),
+          brokerServer: result.server,
+        },
+        create: {
+          accountId: 'mt5-direct',
+          isConnected: true,
+          platform: 'mt5',
+          login: String(result.login),
+          brokerServer: result.server,
+        },
+      });
+
+      return result;
     } catch (error) {
       throw error;
     }

@@ -13,7 +13,21 @@ class AuthRemoteDatasource {
       'phone': phone,
       'password': password,
     });
-    return response.data;
+    final data = response.data;
+    await _storage.write(key: 'access_token', value: data['accessToken']);
+    await _storage.write(key: 'refresh_token', value: data['refreshToken']);
+    return data;
+  }
+
+  Future<Map<String, dynamic>> directLogin(String phone, String password) async {
+    final response = await _apiClient.dio.post(ApiConstants.directLogin, data: {
+      'phone': phone,
+      'password': password,
+    });
+    final data = response.data;
+    await _storage.write(key: 'access_token', value: data['accessToken']);
+    await _storage.write(key: 'refresh_token', value: data['refreshToken']);
+    return data;
   }
 
   Future<Map<String, dynamic>> verifyOtp(String phone, String code) async {

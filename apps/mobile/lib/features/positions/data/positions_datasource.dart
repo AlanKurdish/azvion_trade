@@ -7,7 +7,8 @@ class PositionsDatasource {
 
   Future<List<dynamic>> getOpenPositions() async {
     final response = await _apiClient.dio.get(ApiConstants.openTrades);
-    return response.data;
+    if (response.data is List) return response.data;
+    return [];
   }
 
   Future<Map<String, dynamic>> getHistory({int page = 1, int limit = 20}) async {
@@ -15,6 +16,13 @@ class PositionsDatasource {
       ApiConstants.tradeHistory,
       queryParameters: {'page': page, 'limit': limit},
     );
+    final data = response.data;
+    if (data is Map<String, dynamic>) return data;
+    return {'trades': [], 'total': 0, 'page': page};
+  }
+
+  Future<Map<String, dynamic>> closeTrade(String tradeId) async {
+    final response = await _apiClient.dio.post(ApiConstants.closeTrade(tradeId));
     return response.data;
   }
 }

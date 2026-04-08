@@ -4,17 +4,6 @@ import { MetatraderService } from './metatrader.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { IsString, IsNotEmpty } from 'class-validator';
-
-class ConnectDto {
-  @IsString()
-  @IsNotEmpty()
-  accountId: string;
-
-  @IsString()
-  @IsNotEmpty()
-  token: string;
-}
 
 @Controller('mt')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,8 +12,13 @@ export class MetatraderController {
   constructor(private mtService: MetatraderService) {}
 
   @Post('connect')
-  connect(@Body() dto: ConnectDto) {
-    return this.mtService.connect(dto.accountId, dto.token);
+  connect(@Body() body: { login: string; password: string; server: string }) {
+    return this.mtService.connect(body.login, body.password, body.server);
+  }
+
+  @Post('auto-connect')
+  autoConnect() {
+    return this.mtService.autoConnect();
   }
 
   @Get('status')

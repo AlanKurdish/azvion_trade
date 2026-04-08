@@ -8,6 +8,7 @@
     "trades": "Trades",
     "symbols": "Symbols",
     "settings": "Settings",
+    "history": "Trade History",
     "logout": "Logout"
   },
 
@@ -27,8 +28,29 @@
 
   "dashboard": {
     "title": "Dashboard",
+    "loadError": "Failed to load dashboard data",
+    "totalRevenue": "Total Revenue",
+    "totalPnl": "Total P&L",
+    "openTrades": "Open Trades",
+    "closedTrades": "Closed Trades",
+    "activeUsers": "Active Users",
     "totalUsers": "Total Users",
-    "totalTrades": "Total Trades"
+    "totalDeposits": "Total Deposits",
+    "totalWithdrawals": "Total Withdrawals",
+    "platformBalance": "Platform Balance",
+    "monthlyRevenue": "Monthly Revenue (Last 6 Months)",
+    "monthlyPnl": "Monthly P&L (Last 6 Months)",
+    "monthlyVolume": "Monthly Trade Volume",
+    "revenue": "Revenue",
+    "pnl": "P&L",
+    "topSymbols": "Top Symbols",
+    "trades": "trades",
+    "winRate": "Win Rate",
+    "tradeDistribution": "Trade Distribution",
+    "open": "Open",
+    "closed": "Closed",
+    "recentTrades": "Recent Trades",
+    "noData": "No data yet"
   },
 
   "users": {
@@ -113,7 +135,12 @@
     "noTransactions": "No transactions yet",
     "page": "Page {{page}} · {{total}} total",
     "prev": "Prev",
-    "next": "Next"
+    "next": "Next",
+    "resetPassword": "Reset Password",
+    "newPassword": "New password",
+    "minChars": "Minimum 6 characters",
+    "passwordResetSuccess": "Password updated successfully",
+    "passwordResetFailed": "Failed to reset password"
   },
 
   "trades": {
@@ -133,6 +160,7 @@
     "cancel": "Cancel",
     "opening": "Opening...",
     "livePrices": "Live Prices",
+    "openTradesTab": "Open Trades",
     "appTrades": "App Trades",
     "mtPositions": "MT5 Positions",
     "noSymbols": "No tradable symbols configured. Go to Symbols page to add some.",
@@ -205,7 +233,8 @@
     "displayNamePlaceholder": "Display Name (e.g., Gold)",
     "mtSymbolPlaceholder": "MT Symbol",
     "lotSizePlaceholder": "Lot Size",
-    "amountPlaceholder": "Amount (e.g., 1550g)",
+    "amountPlaceholder": "Amount (e.g., 1550)",
+    "amountLabelPlaceholder": "Amount Label (e.g., 1 kg, 500g, گرام)",
     "pricePlaceholder": "Price for customer (USD)",
     "commissionPlaceholder": "Commission (USD)",
     "cancel": "Cancel",
@@ -216,16 +245,69 @@
 
   "settings": {
     "title": "Settings",
-    "mtConnection": "MetaTrader Connection",
-    "connectedTo": "Connected to {{id}} ({{platform}})",
+    "mtConnection": "MetaTrader 5 Connection",
+    "connected": "Connected",
     "disconnect": "Disconnect",
-    "notConnected": "Not connected",
-    "accountId": "MetaApi Account ID",
-    "token": "MetaApi Token",
+    "notConnected": "Not connected to MT5",
+    "login": "Login",
+    "server": "Server",
+    "balance": "Balance",
+    "equity": "Equity",
+    "loginPlaceholder": "MT5 Account Number (e.g., 139876)",
+    "passwordPlaceholder": "MT5 Password",
+    "serverPlaceholder": "Broker Server (e.g., WingoGroupLtd-Server)",
     "connect": "Connect",
+    "connecting": "Connecting...",
+    "autoConnect": "Auto-Connect (detect running MT5)",
+    "orManual": "or enter credentials manually",
     "privacyPolicy": "Privacy Policy",
     "save": "Save",
     "saved": "Saved!"
+  },
+
+  "history": {
+    "title": "Trade History",
+    "subtitle": "{{count}} trades total",
+    "refresh": "Refresh",
+    "filters": "Filters",
+    "clearFilters": "Clear Filters",
+    "filterUser": "User",
+    "allUsers": "All Users",
+    "filterStatus": "Status",
+    "allStatus": "All Status",
+    "open": "Open",
+    "closed": "Closed",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "selectDate": "Select date...",
+    "user": "User",
+    "symbol": "Symbol",
+    "type": "Type",
+    "lot": "Lot",
+    "openPrice": "Open Price",
+    "currentClose": "Current / Close",
+    "pnl": "P&L",
+    "commission": "Commission",
+    "mtOrder": "MT Order",
+    "status": "Status",
+    "date": "Date",
+    "actions": "Actions",
+    "closing": "Closing...",
+    "close": "Close",
+    "noTrades": "No trades found",
+    "page": "Page {{page}} of {{total}}",
+    "prev": "Prev",
+    "next": "Next",
+    "confirmClose": "Are you sure you want to close this trade?",
+    "closeFailed": "Failed to close trade"
+  },
+
+  "mt5Widget": {
+    "title": "MT5 Account",
+    "balance": "Balance",
+    "equity": "Equity",
+    "floatingPnl": "Floating P&L",
+    "disconnected": "MT5 Disconnected"
   },
 
   "common": {

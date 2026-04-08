@@ -17,38 +17,38 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('symbols')
-@UseGuards(JwtAuthGuard)
 export class SymbolsController {
   constructor(private symbolsService: SymbolsService) {}
 
+  // Public — no auth required (for guest users to see symbols)
   @Get()
   findTradable() {
     return this.symbolsService.findAllTradable();
   }
 
   @Get('all')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   findAll() {
     return this.symbolsService.findAll();
   }
 
   @Post()
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   create(@Body() dto: CreateSymbolDto) {
     return this.symbolsService.create(dto);
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateSymbolDto) {
     return this.symbolsService.update(id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.symbolsService.remove(id);

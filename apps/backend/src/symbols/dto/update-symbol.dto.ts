@@ -9,6 +9,10 @@ import { Type } from 'class-transformer';
 export class UpdateSymbolDto {
   @IsString()
   @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
   displayName?: string;
 
   @Type(() => Number)
@@ -20,6 +24,10 @@ export class UpdateSymbolDto {
   @IsNumber()
   @IsOptional()
   amount?: number;
+
+  @IsString()
+  @IsOptional()
+  amountLabel?: string;
 
   @Type(() => Number)
   @IsNumber()

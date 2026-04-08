@@ -67,6 +67,16 @@ export class UsersController {
     return this.usersService.update(id, dto);
   }
 
+  @Post(':id/reset-password')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  resetPassword(
+    @Param('id') id: string,
+    @Body() body: { password: string },
+  ) {
+    return this.usersService.resetPassword(id, body.password);
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)

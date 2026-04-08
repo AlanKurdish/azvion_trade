@@ -33,7 +33,7 @@ void initDependencies() {
 
   // Dashboard
   sl.registerLazySingleton(() => DashboardDatasource(sl<ApiClient>()));
-  sl.registerFactory(() => DashboardBloc(sl<DashboardDatasource>()));
+  sl.registerFactory(() => DashboardBloc(sl<DashboardDatasource>(), sl<WebSocketClient>()));
 
   // Trade
   sl.registerLazySingleton(() => TradeDatasource(sl<ApiClient>()));
@@ -42,9 +42,9 @@ void initDependencies() {
 
   // Positions
   sl.registerLazySingleton(() => PositionsDatasource(sl<ApiClient>()));
-  sl.registerFactory(() => PositionsBloc(sl<PositionsDatasource>()));
+  sl.registerFactory(() => PositionsBloc(sl<PositionsDatasource>(), sl<WebSocketClient>()));
 
   // Profile
   sl.registerLazySingleton(() => ProfileDatasource(sl<ApiClient>()));
-  sl.registerFactory(() => ProfileBloc(sl<ProfileDatasource>()));
+  sl.registerFactory(() => ProfileBloc(sl<ProfileDatasource>(), sl<WebSocketClient>()));
 }

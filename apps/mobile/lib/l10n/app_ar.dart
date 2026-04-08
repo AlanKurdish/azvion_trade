@@ -1,0 +1,89 @@
+const Map<String, String> ar = {
+  // App
+  'appName': 'ئازین',
+
+  // Auth
+  'phoneNumber': 'رقم الهاتف',
+  'password': 'كلمة المرور',
+  'login': 'تسجيل الدخول',
+  'required': 'مطلوب',
+  'minChars': '٦ أحرف على الأقل',
+  'logout': 'تسجيل الخروج',
+  'logoutConfirm': 'هل أنت متأكد من تسجيل الخروج؟',
+  'cancel': 'إلغاء',
+
+  // Dashboard
+  'dashboard': 'الرئيسية',
+  'accountBalance': 'رصيد الحساب',
+  'monthlyPnl': 'الربح/الخسارة الشهري',
+  'commission': 'العمولة',
+  'openTrades': 'الصفقات المفتوحة',
+  'thisMonth': 'هذا الشهر',
+  'marketOpen': 'السوق مفتوح',
+  'marketClosed': 'السوق مغلق',
+  'waitingMarketData': 'في انتظار بيانات السوق...',
+  'online': 'متصل',
+
+  // Symbols / Trade
+  'trade': 'التداول',
+  'all': 'الكل',
+  'noSymbols': 'لا توجد رموز متاحة',
+  'waitingPrice': 'في انتظار السعر المباشر...',
+  'live': 'مباشر',
+  'bid': 'بيع',
+  'ask': 'شراء',
+  'open': 'مفتوحة',
+  'closed': 'مغلقة',
+
+  // Trade Detail
+  'buy': 'شراء',
+  'openingTrade': 'فتح الصفقة...',
+  'amount': 'الكمية',
+  'price': 'السعر',
+  'totalCost': 'التكلفة الإجمالية',
+  'viewPositions': 'عرض وإدارة الصفقات المفتوحة في تبويب الصفقات',
+  'tradeOpened': 'تم فتح الصفقة بنجاح!',
+
+  // Positions
+  'positions': 'الصفقات',
+  'history': 'السجل',
+  'noOpenPositions': 'لا توجد صفقات مفتوحة',
+  'noTradeHistory': 'لا يوجد سجل تداول',
+  'tapHistoryToLoad': 'اضغط على تبويب السجل للتحميل',
+  'positionsCount': 'صفقة',
+  'pnl': 'الربح/الخسارة',
+  'openLabel': 'الافتتاح',
+  'current': 'الحالي',
+  'close': 'إغلاق',
+  'closePosition': 'إغلاق الصفقة',
+  'closeConfirm': 'إغلاق صفقة {symbol}؟',
+  'retry': 'إعادة المحاولة',
+
+  // Profile
+  'profile': 'الملف الشخصي',
+  'editProfile': 'تعديل الملف الشخصي',
+  'updateName': 'تحديث الاسم',
+  'phoneLabel': 'رقم الهاتف',
+  'verified': 'موثق',
+  'privacyPolicy': 'سياسة الخصوصية',
+  'appVersion': 'إصدار التطبيق',
+  'firstName': 'الاسم الأول',
+  'lastName': 'اسم العائلة',
+  'save': 'حفظ',
+  'balance': 'الرصيد',
+  'noPrivacyPolicy': 'لا توجد سياسة خصوصية.',
+
+  // Bottom Nav
+  'navDashboard': 'الرئيسية',
+  'navTrade': 'التداول',
+  'navPositions': 'الصفقات',
+  'navProfile': 'الملف',
+
+  // Trade modes
+  'modeDisabled': 'معطل',
+  'modeLongOnly': 'شراء فقط',
+  'modeShortOnly': 'بيع فقط',
+  'modeCloseOnly': 'إغلاق فقط',
+  'modeOpen': 'مفتوح',
+  'modeUnknown': 'غير معروف',
+};

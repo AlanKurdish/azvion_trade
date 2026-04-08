@@ -1,14 +1,16 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth-store';
-import { LayoutDashboard, Users, TrendingUp, Settings, LogOut, BarChart3, Globe } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Settings, LogOut, BarChart3, Globe, History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, isRtl } from '../i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 
 const navKeys = [
   { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard', end: true },
   { to: '/dashboard/users', icon: Users, key: 'users' },
   { to: '/dashboard/trades', icon: TrendingUp, key: 'trades' },
+  { to: '/dashboard/history', icon: History, key: 'history' },
   { to: '/dashboard/symbols', icon: BarChart3, key: 'symbols' },
   { to: '/dashboard/settings', icon: Settings, key: 'settings' },
 ];
@@ -18,6 +20,8 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const socketRef = useRef<Socket | null>(null);
 
   const currentLang = LANGUAGES.find((l) => l.code === i18n.language) || LANGUAGES[0];
   const rtl = isRtl(i18n.language);
@@ -26,6 +30,18 @@ export default function DashboardLayout() {
     document.documentElement.dir = rtl ? 'rtl' : 'ltr';
     document.documentElement.lang = i18n.language;
   }, [i18n.language, rtl]);
+
+  // Socket.IO for online user count
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    const socket = io('http://localhost:3000/ws', { auth: { token }, transports: ['websocket'] });
+    socketRef.current = socket;
+    socket.on('admin:online-users', (data: { count: number }) => {
+      setOnlineCount(data.count);
+    });
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, []);
 
   const changeLang = (code: string) => {
     i18n.changeLanguage(code);
@@ -56,7 +72,12 @@ export default function DashboardLayout() {
               }
             >
               <item.icon size={20} />
-              <span>{t(`nav.${item.key}`)}</span>
+              <span className="flex-1">{t(`nav.${item.key}`)}</span>
+              {item.key === 'users' && onlineCount > 0 && (
+                <span className="bg-green-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {onlineCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
