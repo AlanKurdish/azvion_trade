@@ -17,6 +17,24 @@ export class TradesService {
     private wsGateway: WsGateway,
   ) {}
 
+  /**
+   * Safely evaluate a price formula. Variables: ask, bid.
+   */
+  private evaluateFormula(formula: string, bid: number, ask: number): number | null {
+    try {
+      const sanitized = formula.replace(/\s/g, '');
+      if (!/^[0-9+\-*/().askbid]+$/i.test(sanitized)) return null;
+      const expr = sanitized
+        .replace(/ask/gi, String(ask))
+        .replace(/bid/gi, String(bid));
+      const result = new Function(`return (${expr})`)();
+      if (typeof result !== 'number' || !isFinite(result)) return null;
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
   async openTrade(userId: string, symbolId: string) {
     const [symbol, user] = await Promise.all([
       this.prisma.symbol.findUnique({ where: { id: symbolId } }),
@@ -46,7 +64,25 @@ export class TradesService {
       throw new BadRequestException('No balance record found');
     }
 
-    const totalCost = Number(symbol.price) + Number(symbol.commission);
+    // Step 0: Get live price and compute formula result
+    const livePrice = await this.mtService.getPrice(symbol.mtSymbol);
+    const liveBid = livePrice.bid;
+    const liveAsk = livePrice.ask;
+
+    let formulaPrice: number;
+    if (symbol.formula) {
+      // Evaluate the formula with live bid/ask
+      const result = this.evaluateFormula(symbol.formula, liveBid, liveAsk);
+      if (result === null || result <= 0) {
+        throw new BadRequestException('Failed to compute price from formula. Check symbol formula configuration.');
+      }
+      formulaPrice = result;
+    } else {
+      // No formula — use ask price
+      formulaPrice = liveAsk;
+    }
+
+    const totalCost = formulaPrice + Number(symbol.commission);
     if (Number(balance.amount) < totalCost) {
       throw new BadRequestException(
         `Insufficient balance. Required: $${totalCost.toFixed(2)}, Available: $${Number(balance.amount).toFixed(2)}`,
@@ -94,15 +130,18 @@ export class TradesService {
       });
 
       // Create trade record
-      // openPrice = MT5 market price; customerPrice = what was deducted from user balance
+      // openPrice = MT5 market price; customerPrice = formula result (what was deducted)
+      // openBid/openAsk = raw market prices at time of purchase
       const newTrade = await tx.trade.create({
         data: {
           userId,
           symbolId,
           type: 'BUY',
           lotSize: symbol.lotSize,
-          openPrice: mtOpenPrice ?? symbol.price,
-          customerPrice: symbol.price,
+          openPrice: mtOpenPrice ?? liveAsk,
+          openBid: liveBid,
+          openAsk: liveAsk,
+          customerPrice: formulaPrice,
           commission: symbol.commission,
           mtOrderId,
         },
@@ -117,9 +156,9 @@ export class TradesService {
           {
             userId,
             type: 'TRADE_OPEN',
-            amount: new Prisma.Decimal(-Number(symbol.price)),
+            amount: new Prisma.Decimal(-formulaPrice),
             tradeId: newTrade.id,
-            note: `Buy ${symbol.displayName}`,
+            note: `Buy ${symbol.displayName} @ $${formulaPrice.toFixed(2)}`,
           },
           ...(Number(symbol.commission) > 0
             ? [
@@ -139,8 +178,13 @@ export class TradesService {
     });
 
     // Step 3: Notify via WebSocket
+    console.log(`[TRADE] Emitting trade:opened to user:${userId}`);
     this.wsGateway.emitToUser(userId, 'trade:opened', trade);
     this.wsGateway.emitAdminTradeOpened(trade);
+
+    // Also emit balance update so app refreshes balance
+    const updatedBalance = await this.prisma.balance.findUnique({ where: { userId } });
+    this.wsGateway.emitToUser(userId, 'balance:updated', { balance: updatedBalance?.amount });
 
     return trade;
   }
@@ -175,12 +219,26 @@ export class TradesService {
     // Use MT5's actual profit (includes contract size, currency conversion, swap)
     const profitLoss = mtProfit;
 
+    // Compute formula close price for user display
+    let customerClosePrice: number | null = null;
+    try {
+      const livePriceAtClose = await this.mtService.getPrice(trade.symbol.mtSymbol);
+      if (trade.symbol.formula) {
+        customerClosePrice = this.evaluateFormula(trade.symbol.formula, livePriceAtClose.bid, livePriceAtClose.ask);
+      } else {
+        customerClosePrice = livePriceAtClose.ask;
+      }
+    } catch {
+      // Fallback: no formula close price
+    }
+
     const updatedTrade = await this.prisma.$transaction(async (tx) => {
       const closed = await tx.trade.update({
         where: { id: tradeId },
         data: {
           status: 'CLOSED',
           closePrice,
+          customerClosePrice,
           profitLoss,
           closedAt: new Date(),
         },
@@ -235,11 +293,21 @@ export class TradesService {
     });
   }
 
-  async getTradeHistory(userId: string, page = 1, limit = 20) {
+  async getTradeHistory(userId: string, page = 1, limit = 20, fromDate?: string, toDate?: string) {
     const skip = (page - 1) * limit;
+    const where: any = { userId, status: 'CLOSED' };
+    if (fromDate || toDate) {
+      where.closedAt = {};
+      if (fromDate) where.closedAt.gte = new Date(fromDate);
+      if (toDate) {
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+        where.closedAt.lte = to;
+      }
+    }
     const [trades, total] = await Promise.all([
       this.prisma.trade.findMany({
-        where: { userId, status: 'CLOSED' },
+        where,
         include: {
           symbol: {
             select: { displayName: true, mtSymbol: true, name: true },
@@ -249,7 +317,7 @@ export class TradesService {
         take: limit,
         orderBy: { closedAt: 'desc' },
       }),
-      this.prisma.trade.count({ where: { userId, status: 'CLOSED' } }),
+      this.prisma.trade.count({ where }),
     ]);
     return { trades, total, page, limit };
   }
@@ -258,38 +326,61 @@ export class TradesService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const trades = await this.prisma.trade.findMany({
-      where: {
-        userId,
-        status: 'CLOSED',
-        closedAt: { gte: startOfMonth },
-      },
-      select: { profitLoss: true, commission: true },
-    });
+    const [
+      monthlyTrades,
+      allClosedTrades,
+      balance,
+      openTradesCount,
+      totalDeposits,
+      totalWithdrawals,
+      totalCommissions,
+    ] = await Promise.all([
+      // Monthly closed trades
+      this.prisma.trade.findMany({
+        where: { userId, status: 'CLOSED', closedAt: { gte: startOfMonth } },
+        select: { profitLoss: true, commission: true },
+      }),
+      // All-time closed trades
+      this.prisma.trade.findMany({
+        where: { userId, status: 'CLOSED' },
+        select: { profitLoss: true },
+      }),
+      // Balance
+      this.prisma.balance.findUnique({ where: { userId } }),
+      // Open trades count
+      this.prisma.trade.count({ where: { userId, status: 'OPEN' } }),
+      // Total deposits
+      this.prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { userId, type: 'DEPOSIT' },
+      }),
+      // Total withdrawals
+      this.prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { userId, type: 'WITHDRAWAL' },
+      }),
+      // Total commissions paid
+      this.prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { userId, type: 'COMMISSION' },
+      }),
+    ]);
 
-    const totalPnl = trades.reduce(
-      (sum, t) => sum + Number(t.profitLoss ?? 0),
-      0,
-    );
-    const totalCommission = trades.reduce(
-      (sum, t) => sum + Number(t.commission),
-      0,
-    );
-
-    const balance = await this.prisma.balance.findUnique({
-      where: { userId },
-    });
-
-    const openTradesCount = await this.prisma.trade.count({
-      where: { userId, status: 'OPEN' },
-    });
+    const monthlyPnl = monthlyTrades.reduce((sum, t) => sum + Number(t.profitLoss ?? 0), 0);
+    const monthlyCommission = monthlyTrades.reduce((sum, t) => sum + Number(t.commission), 0);
+    const totalPnl = allClosedTrades.reduce((sum, t) => sum + Number(t.profitLoss ?? 0), 0);
 
     return {
-      monthlyPnl: totalPnl,
-      monthlyCommission: totalCommission,
-      closedTradesCount: trades.length,
-      openTradesCount,
       balance: balance ? Number(balance.amount) : 0,
+      openTradesCount,
+      closedTradesCount: allClosedTrades.length,
+      monthlyPnl,
+      monthlyCommission,
+      // All-time stats
+      totalDeposit: Number(totalDeposits._sum.amount || 0),
+      totalWithdrawal: Math.abs(Number(totalWithdrawals._sum.amount || 0)),
+      totalPnl,
+      totalCommission: Math.abs(Number(totalCommissions._sum.amount || 0)),
     };
   }
 
@@ -327,12 +418,26 @@ export class TradesService {
     // Use MT5's actual profit
     const profitLoss = mtProfit;
 
+    // Compute formula close price for user display
+    let customerClosePrice: number | null = null;
+    try {
+      const livePriceAtClose = await this.mtService.getPrice(trade.symbol.mtSymbol);
+      if (trade.symbol.formula) {
+        customerClosePrice = this.evaluateFormula(trade.symbol.formula, livePriceAtClose.bid, livePriceAtClose.ask);
+      } else {
+        customerClosePrice = livePriceAtClose.ask;
+      }
+    } catch {
+      // Fallback: no formula close price
+    }
+
     const updatedTrade = await this.prisma.$transaction(async (tx) => {
       const closed = await tx.trade.update({
         where: { id: tradeId },
         data: {
           status: 'CLOSED',
           closePrice,
+          customerClosePrice,
           profitLoss,
           closedAt: new Date(),
         },

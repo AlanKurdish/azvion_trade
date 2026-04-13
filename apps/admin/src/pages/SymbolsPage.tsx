@@ -16,7 +16,7 @@ export default function SymbolsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
     name: '', displayName: '', mtSymbol: '',
-    lotSize: '', amount: '', amountLabel: '', price: '', commission: '', isTradable: false,
+    lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false,
   });
 
   // MT symbols picker
@@ -59,7 +59,7 @@ export default function SymbolsPage() {
       lotSize: '1',
       amount: '1',
       amountLabel: '',
-      price: '',
+      formula: '',
       commission: '0',
       isTradable: false,
     });
@@ -74,10 +74,10 @@ export default function SymbolsPage() {
       ...form,
       lotSize: parseFloat(form.lotSize),
       amount: parseFloat(form.amount),
-      price: parseFloat(form.price),
       commission: parseFloat(form.commission || '0'),
     };
     if (!payload.amountLabel) delete payload.amountLabel;
+    if (!payload.formula) delete payload.formula;
 
     if (editing) {
       const { mtSymbol: _, ...updatePayload } = payload;
@@ -87,7 +87,7 @@ export default function SymbolsPage() {
     }
     setShowForm(false);
     setEditing(null);
-    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', price: '', commission: '', isTradable: false });
+    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false });
     loadSymbols();
   };
 
@@ -96,7 +96,7 @@ export default function SymbolsPage() {
     setForm({
       name: sym.name, displayName: sym.displayName, mtSymbol: sym.mtSymbol,
       lotSize: String(sym.lotSize), amount: String(sym.amount), amountLabel: sym.amountLabel || '',
-      price: String(sym.price), commission: String(sym.commission), isTradable: sym.isTradable,
+      formula: sym.formula || '', commission: String(sym.commission), isTradable: sym.isTradable,
     });
     setShowForm(true);
   };
@@ -133,7 +133,7 @@ export default function SymbolsPage() {
           <button onClick={openAddFromMt} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
             <Download size={18} /> {t('symbols.importMt5')}
           </button>
-          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', price: '', commission: '', isTradable: false }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
+          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
             <Plus size={18} /> {t('symbols.addManual')}
           </button>
         </div>
@@ -147,7 +147,7 @@ export default function SymbolsPage() {
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.mtSymbol')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.lotSize')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.amount')}</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.price')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.formula')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.commission')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.tradable')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.actions')}</th>
@@ -160,7 +160,7 @@ export default function SymbolsPage() {
                 <td className="px-6 py-3 text-gray-400">{sym.mtSymbol}</td>
                 <td className="px-6 py-3">{sym.lotSize}</td>
                 <td className="px-6 py-3">{sym.amount}{sym.amountLabel && <span className="text-gray-400 text-xs ms-1">({sym.amountLabel})</span>}</td>
-                <td className="px-6 py-3 text-[#D4AF37] font-bold">${sym.price}</td>
+                <td className="px-6 py-3 text-gray-400 text-sm font-mono">{sym.formula || '—'}</td>
                 <td className="px-6 py-3">${sym.commission}</td>
                 <td className="px-6 py-3">
                   <button onClick={() => toggleTradable(sym)} className={`w-10 h-5 rounded-full transition-colors ${sym.isTradable ? 'bg-green-500' : 'bg-gray-600'}`}>
@@ -279,7 +279,7 @@ export default function SymbolsPage() {
               <input value={form.lotSize} onChange={(e) => setForm({ ...form, lotSize: e.target.value })} placeholder={t('symbols.lotSizePlaceholder')} type="number" step="0.01" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
               <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={t('symbols.amountPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
               <input value={form.amountLabel} onChange={(e) => setForm({ ...form, amountLabel: e.target.value })} placeholder={t('symbols.amountLabelPlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
-              <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder={t('symbols.pricePlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
+              <input value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} placeholder={t('symbols.formulaPlaceholder')} className="col-span-2 px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white font-mono" />
               <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={t('symbols.commissionPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={form.isTradable} onChange={(e) => setForm({ ...form, isTradable: e.target.checked })} className="w-4 h-4" />

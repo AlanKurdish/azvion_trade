@@ -14,7 +14,9 @@ class LoadOpenPositions extends PositionsEvent {}
 
 class LoadHistory extends PositionsEvent {
   final int page;
-  LoadHistory({this.page = 1});
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  LoadHistory({this.page = 1, this.fromDate, this.toDate});
 }
 
 class ClosePositionRequested extends PositionsEvent {
@@ -77,11 +79,12 @@ class HistoryLoaded extends PositionsState {
   final List<dynamic> trades;
   final int total;
   final int page;
+  final Map<String, dynamic> stats;
 
-  HistoryLoaded({required this.trades, required this.total, required this.page});
+  HistoryLoaded({required this.trades, required this.total, required this.page, this.stats = const {}});
 
   @override
-  List<Object?> get props => [trades, total, page];
+  List<Object?> get props => [trades, total, page, stats];
 }
 
 class PositionsError extends PositionsState {
@@ -166,11 +169,21 @@ class PositionsBloc extends Bloc<PositionsEvent, PositionsState> {
   Future<void> _onLoadHistory(LoadHistory event, Emitter<PositionsState> emit) async {
     emit(PositionsLoading());
     try {
-      final data = await _datasource.getHistory(page: event.page);
+      final results = await Future.wait([
+        _datasource.getHistory(
+          page: event.page,
+          fromDate: event.fromDate,
+          toDate: event.toDate,
+        ),
+        _datasource.getStats(),
+      ]);
+      final data = results[0];
+      final stats = results[1];
       emit(HistoryLoaded(
         trades: (data['trades'] as List?) ?? [],
         total: (data['total'] as int?) ?? 0,
         page: (data['page'] as int?) ?? 1,
+        stats: stats,
       ));
     } catch (e) {
       emit(PositionsError(e.toString()));
@@ -211,6 +224,11 @@ class PositionsBloc extends Bloc<PositionsEvent, PositionsState> {
       final symbol = event.data['symbol']?.toString() ?? '';
       if (symbol.isEmpty) return;
       final updated = Map<String, Map<String, dynamic>>.from(s.livePrices);
+      // Store by symbolId (for formula prices) and by mtSymbol
+      final symbolId = event.data['symbolId']?.toString();
+      if (symbolId != null) {
+        updated[symbolId] = event.data;
+      }
       updated[symbol] = event.data;
       emit(s.copyWith(livePrices: updated));
     }

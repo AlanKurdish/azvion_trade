@@ -18,7 +18,7 @@ class LanguageSelectionPage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0f172a), Color(0xFF1e293b), Color(0xFF0f172a)],
+            colors: [Color(0xFF0a0e1a), Color(0xFF0f1628), Color(0xFF0a0e1a)],
           ),
         ),
         child: SafeArea(
@@ -28,38 +28,27 @@ class LanguageSelectionPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo / App icon
+                  // Logo
+                  Image.asset(
+                    'assets/logo.png',
+                    width: 150,
+                    height: 150,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Gold separator
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 50,
+                    height: 2,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFD4AF37), Color(0xFFF5D76E)],
+                        colors: [Colors.transparent, Color(0xFFD4AF37), Colors.transparent],
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.language, size: 40, color: Colors.black),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Title
-                  const Text(
-                    'Azin',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFD4AF37),
-                      letterSpacing: 2,
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
                     'Select Language / زمان هەڵبژێرە',
                     style: TextStyle(
@@ -67,7 +56,7 @@ class LanguageSelectionPage extends StatelessWidget {
                       color: Colors.grey[400],
                     ),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 40),
 
                   // Language cards
                   ..._languages.map((lang) => Padding(
@@ -113,9 +102,9 @@ class _LanguageCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
           decoration: BoxDecoration(
-            color: const Color(0xFF1e293b),
+            color: const Color(0xFF1a1f2e),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: const Color(0xFF2a3040)),
           ),
           child: Row(
             children: [

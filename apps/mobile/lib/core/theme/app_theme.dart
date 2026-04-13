@@ -10,10 +10,22 @@ class AppTheme {
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB0B0B0);
 
-  static ThemeData get darkTheme {
+  /// RTL languages that should use Cairo font
+  static const _rtlLocales = {'ar', 'ckb'};
+
+  static ThemeData darkThemeFor(String languageCode) {
+    final useRtlFont = _rtlLocales.contains(languageCode);
+    final fontFamily = useRtlFont ? 'Rabar' : null;
+    return _buildDarkTheme(fontFamily);
+  }
+
+  static ThemeData get darkTheme => _buildDarkTheme(null);
+
+  static ThemeData _buildDarkTheme(String? fontFamily) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: fontFamily,
       colorScheme: ColorScheme.dark(
         primary: primaryColor,
         secondary: secondaryColor,

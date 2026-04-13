@@ -22,6 +22,19 @@ function formatPrice(price: number): string {
   return price.toFixed(5);
 }
 
+/** Evaluate a price formula with bid/ask variables */
+function evalFormula(formula: string, bid: number, ask: number): number | null {
+  try {
+    const sanitized = formula.replace(/\s/g, '');
+    if (!/^[0-9+\-*/().askbid]+$/i.test(sanitized)) return null;
+    const expr = sanitized.replace(/ask/gi, String(ask)).replace(/bid/gi, String(bid));
+    const result = new Function(`return (${expr})`)();
+    return typeof result === 'number' && isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function TradesPage() {
   const { t } = useTranslation();
   const [symbols, setSymbols] = useState<any[]>([]);
@@ -206,21 +219,20 @@ export default function TradesPage() {
                 <select value={selectedSymbolId} onChange={(e) => setSelectedSymbolId(e.target.value)} className="w-full px-4 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white">
                   <option value="">{t('trades.chooseSymbol')}</option>
                   {symbols.map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.displayName} — ${s.price} (Lot: {s.lotSize}, Comm: ${s.commission})</option>
+                    <option key={s.id} value={s.id}>{s.displayName} (Lot: {s.lotSize}, Comm: ${s.commission})</option>
                   ))}
                 </select>
               </div>
               {selectedUserId && selectedSymbolId && (() => {
                 const sym = symbols.find((s: any) => s.id === selectedSymbolId);
                 const user = users.find((u: any) => u.id === selectedUserId);
-                const totalCost = sym ? Number(sym.price) + Number(sym.commission) : 0;
+                const commission = sym ? Number(sym.commission) : 0;
                 const userBal = Number(user?.balance?.amount ?? 0);
-                const canAfford = userBal >= totalCost;
                 return (
-                  <div className={`p-3 rounded-lg text-sm ${canAfford ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
-                    <div className="flex justify-between"><span className="text-gray-400">{t('trades.totalCost')}</span><span className="font-semibold">${totalCost.toFixed(2)}</span></div>
+                  <div className="p-3 rounded-lg text-sm bg-blue-500/10 border border-blue-500/30">
+                    <div className="flex justify-between"><span className="text-gray-400">{t('trades.commission')}</span><span className="font-semibold">${commission.toFixed(2)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">{t('trades.userBalance')}</span><span className="font-semibold">${userBal.toFixed(2)}</span></div>
-                    {!canAfford && <p className="text-red-400 text-xs mt-1">{t('trades.insufficientBalance')}</p>}
+                    <p className="text-blue-400 text-xs mt-1">{t('trades.livePriceNote')}</p>
                   </div>
                 );
               })()}
@@ -282,14 +294,25 @@ export default function TradesPage() {
                     ) : (
                       <div className="bg-[#0f172a] rounded-lg p-4 text-center mb-4 text-gray-500">{t('trades.waitingPrice')}</div>
                     )}
-                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-400">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
                       <div><span className="block">{t('trades.lot')}</span><span className="text-white font-semibold">{sym.lotSize}</span></div>
-                      <div><span className="block">{t('trades.price')}</span><span className="text-[#D4AF37] font-semibold">${sym.price}</span></div>
                       <div><span className="block">{t('trades.commission')}</span><span className="text-white font-semibold">${sym.commission}</span></div>
                     </div>
                     <div className="mt-3 text-xs text-gray-500">
                       {t('trades.spread')}: {price ? formatPrice(price.ask - price.bid) : '-'}
                     </div>
+                    {sym.formula && price && (() => {
+                      const result = evalFormula(sym.formula, price.bid, price.ask);
+                      return result !== null ? (
+                        <div className="mt-3 pt-3 border-t border-[#334155]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">{sym.amountLabel || t('trades.formulaPrice')}</span>
+                            <span className="text-lg font-bold text-[#D4AF37] font-mono">{formatPrice(result)}</span>
+                          </div>
+                          <span className="text-[10px] text-gray-600 font-mono">{sym.formula}</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 );
               })}
@@ -324,8 +347,15 @@ export default function TradesPage() {
                 <tbody>
                   {openTrades.map((tr) => {
                     const pnl = livePnl[tr.id];
-                    const currentPrice = pnl?.currentPrice ?? null;
                     const pnlValue = pnl?.mtProfit ?? null;
+                    // Show formula price (customerPrice), not MT5 market price
+                    const formulaOpenPrice = tr.customerPrice ? parseFloat(tr.customerPrice) : parseFloat(tr.openPrice);
+                    // Live formula price from symbol card prices
+                    const symPrice = livePrices[tr.symbol?.mtSymbol];
+                    const liveFormulaPrice = symPrice ? evalFormula(
+                      symbols.find((s: any) => s.id === tr.symbolId)?.formula || '',
+                      symPrice.bid, symPrice.ask
+                    ) : null;
 
                     return (
                       <tr key={tr.id} className="border-b border-[#334155]/50 hover:bg-white/5">
@@ -338,10 +368,10 @@ export default function TradesPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">{tr.lotSize}</td>
-                        <td className="px-4 py-3">${formatPrice(parseFloat(tr.openPrice))}</td>
+                        <td className="px-4 py-3">${formatPrice(formulaOpenPrice)}</td>
                         <td className="px-4 py-3">
-                          {currentPrice ? (
-                            <span className="text-[#D4AF37] font-mono">${formatPrice(Number(currentPrice))}</span>
+                          {liveFormulaPrice ? (
+                            <span className="text-[#D4AF37] font-mono">${formatPrice(liveFormulaPrice)}</span>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}

@@ -92,6 +92,7 @@ export default function UserDetailPage() {
       await api.patch(`/users/${id}`, {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
+        phone: editForm.phone.trim(),
         isActive: editForm.isActive,
       });
       await loadUser();
@@ -223,6 +224,16 @@ export default function UserDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400">{t('userDetail.phone')}</label>
+                <input
+                  value={editForm.phone}
+                  onChange={(e) => { const v = e.target.value.replace(/[^0-9+\-\s]/g, ''); setEditForm({ ...editForm, phone: v }); }}
+                  type="tel"
+                  className={`w-full mt-1 px-3 py-2 bg-[#0f172a] border rounded text-sm text-white ${editErrors.phone ? 'border-red-500' : 'border-[#334155]'}`}
+                />
+                {editErrors.phone && <p className="text-red-400 text-xs mt-1">{editErrors.phone}</p>}
+              </div>
               <div>
                 <label className="text-xs text-gray-400">{t('userDetail.firstName')}</label>
                 <input

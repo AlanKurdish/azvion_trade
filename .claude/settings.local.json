@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(npx nest:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(xargs grep:*)",
+      "Bash(dir:*)",
+      "Bash(cygpath:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")"
     ]
   }
 }

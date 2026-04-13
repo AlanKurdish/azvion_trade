@@ -27,8 +27,10 @@ class _SymbolsPageState extends State<SymbolsPage> {
     super.initState();
     _priceSub = _wsClient.on('price:update').listen((data) {
       if (data is Map<String, dynamic> && data['symbol'] != null) {
+        // Key by symbolId if available (formula prices), otherwise by mtSymbol
+        final key = data['symbolId']?.toString() ?? data['symbol'].toString();
         setState(() {
-          _livePrices[data['symbol']] = data;
+          _livePrices[key] = data;
         });
       }
     });
@@ -153,9 +155,13 @@ class _SymbolsPageState extends State<SymbolsPage> {
                         padding: const EdgeInsets.all(12),
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
+                          final sym = filtered[index];
+                          // Look up by symbol ID first (formula prices), fallback to mtSymbol
+                          final livePrice = _livePrices[sym['id']?.toString() ?? '']
+                              ?? _livePrices[sym['mtSymbol']?.toString() ?? ''];
                           return _SymbolCard(
-                            symbol: filtered[index],
-                            livePrice: _livePrices[filtered[index]['mtSymbol']?.toString() ?? ''],
+                            symbol: sym,
+                            livePrice: livePrice,
                             isLoggedIn: _isLoggedIn,
                           );
                         },
@@ -229,9 +235,7 @@ class _SymbolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final mtSymbol = symbol['mtSymbol']?.toString() ?? '';
-    final bid = livePrice != null ? (livePrice!['bid'] as num?)?.toDouble() : null;
-    final ask = livePrice != null ? (livePrice!['ask'] as num?)?.toDouble() : null;
+    final formulaPrice = livePrice != null ? (livePrice!['formulaPrice'] as num?)?.toDouble() : null;
     final tradeMode = livePrice != null ? (livePrice!['tradeMode'] as num?)?.toInt() ?? 4 : null;
     final isSymbolOpen = tradeMode == null || tradeMode == 4;
 
@@ -296,51 +300,42 @@ class _SymbolCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          symbol['amountLabel']?.toString() ?? '${symbol['amount'] ?? ''}',
+                          symbol['amountLabel'] != null && symbol['amountLabel'].toString().isNotEmpty
+                              ? '${symbol['amount'] ?? ''} (${symbol['amountLabel']})'
+                              : '${symbol['amount'] ?? ''}',
                           style: TextStyle(color: Colors.grey[500], fontSize: 12),
                         ),
                       ],
                     ),
                   ),
+                  // Live formula price or static price
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        '\$${symbol['price']}',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37)),
-                      ),
+                      if (formulaPrice != null) ...[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                            const SizedBox(width: 4),
+                            Text(
+                              formatPrice(formulaPrice),
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontFamily: 'monospace'),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        const Text(
+                          '...',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37)),
+                        ),
+                      ],
                     ],
                   ),
                 ],
               ),
-              // Live price bar
-              if (bid != null && ask != null) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0f172a),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(children: [
-                        Container(width: 5, height: 5, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
-                        const SizedBox(width: 5),
-                        Text(t.tr('live'), style: TextStyle(color: Colors.grey[600], fontSize: 10)),
-                      ]),
-                      Row(children: [
-                        Text('${t.tr('bid')}: ', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        Text(formatPrice(bid), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'monospace')),
-                        const SizedBox(width: 12),
-                        Text('${t.tr('ask')}: ', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        Text(formatPrice(ask), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'monospace')),
-                      ]),
-                    ],
-                  ),
-                ),
-              ] else ...[
+              // Waiting indicator when no live price yet
+              if (livePrice == null) ...[
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -350,17 +345,6 @@ class _SymbolCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(t.tr('waitingPrice'), style: TextStyle(color: Colors.grey[600], fontSize: 10)),
                   ]),
-                ),
-              ],
-              // Login prompt for non-logged-in users
-              if (!isLoggedIn) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    t.tr('login'),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                  ),
                 ),
               ],
             ],

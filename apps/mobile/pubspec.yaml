@@ -28,6 +28,25 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.4.14
   json_serializable: ^6.9.4
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+  adaptive_icon_background: "#0a0e1a"
+  adaptive_icon_foreground: "assets/logo.png"
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/logo.png
+
+  fonts:
+    - family: Rabar
+      fonts:
+        - asset: assets/fonts/Rabar.ttf
+    - family: Rudaw
+      fonts:
+        - asset: assets/fonts/rudawregular.ttf

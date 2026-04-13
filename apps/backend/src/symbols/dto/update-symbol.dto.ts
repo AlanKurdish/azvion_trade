@@ -29,10 +29,9 @@ export class UpdateSymbolDto {
   @IsOptional()
   amountLabel?: string;
 
-  @Type(() => Number)
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  price?: number;
+  formula?: string;
 
   @Type(() => Number)
   @IsNumber()

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../lib/api';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff } from 'lucide-react';
 
 interface Mt5Status {
   connected: boolean;
@@ -15,7 +15,7 @@ export default function Mt5BalanceWidget() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Mt5Status | null>(null);
   const [loading, setLoading] = useState(true);
-  const [prevBalance, setPrevBalance] = useState<number | null>(null);
+  const [, setPrevBalance] = useState<number | null>(null);
   const timerRef = useRef<any>(null);
 
   const load = async () => {
@@ -57,9 +57,6 @@ export default function Mt5BalanceWidget() {
     );
   }
 
-  const balanceChange = prevBalance != null && status.balance != null
-    ? status.balance - prevBalance
-    : 0;
   const floatingPnl = status.balance != null && status.equity != null
     ? status.equity - status.balance
     : 0;

@@ -8,6 +8,7 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/trade/presentation/pages/symbols_page.dart';
 import 'features/onboarding/language_selection_page.dart';
+import 'features/onboarding/splash_screen.dart';
 import 'core/network/websocket_client.dart';
 import 'l10n/app_localizations.dart';
 import 'l10n/language_provider.dart';
@@ -28,6 +29,8 @@ class AzinApp extends StatefulWidget {
 }
 
 class _AzinAppState extends State<AzinApp> {
+  bool _splashDone = false;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +47,15 @@ class _AzinAppState extends State<AzinApp> {
         home: const Scaffold(
           body: Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37))),
         ),
+      );
+    }
+
+    // Show splash screen on every app launch
+    if (!_splashDone) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        home: SplashScreen(onComplete: () => setState(() => _splashDone = true)),
       );
     }
 
@@ -64,7 +76,7 @@ class _AzinAppState extends State<AzinApp> {
       child: MaterialApp(
         title: 'Azin',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
+        theme: AppTheme.darkThemeFor(locale.languageCode),
         locale: locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.allDelegates,

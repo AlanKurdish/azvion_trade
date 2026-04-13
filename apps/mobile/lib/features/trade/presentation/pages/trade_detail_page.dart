@@ -17,7 +17,7 @@ class TradeDetailPage extends StatelessWidget {
     return BlocProvider(
       create: (_) {
         final bloc = sl<TradeBloc>();
-        bloc.subscribeToPriceStream(mtSymbol);
+        bloc.subscribeToPriceStream(mtSymbol, symbolId: symbolId);
         return bloc;
       },
       child: _TradeDetailView(symbol: symbol),
@@ -41,9 +41,7 @@ class _TradeDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mtSymbol = symbol['mtSymbol']?.toString() ?? '';
-    final price = double.tryParse(symbol['price'].toString()) ?? 0;
     final commission = double.tryParse(symbol['commission'].toString()) ?? 0;
-    final totalCost = price + commission;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -84,7 +82,9 @@ class _TradeDetailView extends StatelessWidget {
             final openTrades = tradeReady?.openTrades ?? [];
             final liveBid = tradeReady?.liveBid;
             final liveAsk = tradeReady?.liveAsk;
+            final liveFormulaPrice = tradeReady?.liveFormulaPrice;
             final isBuying = tradeReady?.isBuying ?? false;
+            final hasFormula = liveFormulaPrice != null;
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -107,55 +107,29 @@ class _TradeDetailView extends StatelessWidget {
                           Text(mtSymbol, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                           const SizedBox(height: 16),
 
-                          // Live price display
-                          if (liveBid != null && liveAsk != null) ...[
+                          // Live price display — formula result only
+                          if (hasFormula || liveBid != null || liveAsk != null) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              child: Column(
                                 children: [
-                                  Column(
-                                    children: [
-                                      const Text('BID', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        formatPrice(liveBid),
-                                        style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.redAccent,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Container(width: 1, height: 30, color: Colors.grey.withValues(alpha: 0.3)),
-                                  Column(
-                                    children: [
-                                      const Text('ASK', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        formatPrice(liveAsk),
-                                        style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ],
+                                  Text(AppLocalizations.of(context).tr('livePrice'), style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    formatPrice(liveFormulaPrice ?? liveAsk ?? liveBid ?? 0),
+                                    style: const TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFD4AF37),
+                                      fontFamily: 'monospace',
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Spread: ${formatPrice(liveAsk - liveBid)}',
-                              style: const TextStyle(color: Colors.grey, fontSize: 11),
                             ),
                           ] else
                             Container(
@@ -182,45 +156,60 @@ class _TradeDetailView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Trade info card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _infoRow(AppLocalizations.of(context).tr('price'), '\$$price'),
-                          _infoRow(AppLocalizations.of(context).tr('commission'), '\$$commission'),
-                          const Divider(),
-                          _infoRow(AppLocalizations.of(context).tr('totalCost'), '\$${totalCost.toStringAsFixed(2)}',
-                              valueStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontSize: 16)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  // Trade info card — uses live formula price
+                  Builder(builder: (context) {
+                    final livePrice = liveFormulaPrice ?? 0.0;
+                    final liveTotalCost = livePrice + commission;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                _infoRow(AppLocalizations.of(context).tr('price'),
+                                    liveFormulaPrice != null ? '\$${formatPrice(livePrice)}' : '...'),
+                                _infoRow(AppLocalizations.of(context).tr('commission'), '\$${commission.toStringAsFixed(2)}'),
+                                const Divider(),
+                                _infoRow(AppLocalizations.of(context).tr('totalCost'),
+                                    liveFormulaPrice != null ? '\$${liveTotalCost.toStringAsFixed(2)}' : '...',
+                                    valueStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontSize: 16)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-                  // Buy button
-                  SizedBox(
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: isBuying
-                          ? null
-                          : () {
-                              context.read<TradeBloc>().add(OpenTradeRequested(symbol['id']));
-                            },
-                      icon: isBuying
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.shopping_cart, color: Colors.white),
-                      label: Text(
-                        isBuying ? AppLocalizations.of(context).tr('openingTrade') : '${AppLocalizations.of(context).tr('buy')} (\$${totalCost.toStringAsFixed(2)})',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD4AF37),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
+                        // Buy button
+                        SizedBox(
+                          height: 50,
+                          child: ElevatedButton.icon(
+                            onPressed: (isBuying || liveFormulaPrice == null)
+                                ? null
+                                : () {
+                                    context.read<TradeBloc>().add(OpenTradeRequested(symbol['id']));
+                                  },
+                            icon: isBuying
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.shopping_cart, color: Colors.white),
+                            label: Text(
+                              isBuying
+                                  ? AppLocalizations.of(context).tr('openingTrade')
+                                  : liveFormulaPrice != null
+                                      ? '${AppLocalizations.of(context).tr('buy')} (\$${liveTotalCost.toStringAsFixed(2)})'
+                                      : AppLocalizations.of(context).tr('waitingPrice'),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),

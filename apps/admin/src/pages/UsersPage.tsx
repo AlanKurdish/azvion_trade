@@ -155,8 +155,10 @@ export default function UsersPage() {
                 <label className="block text-sm text-gray-400 mb-1">{t('users.phone')} *</label>
                 <input
                   value={form.phone}
-                  onChange={(e) => { setForm({ ...form, phone: e.target.value }); setErrors({ ...errors, phone: '' }); }}
+                  onChange={(e) => { const v = e.target.value.replace(/[^0-9+\-\s]/g, ''); setForm({ ...form, phone: v }); setErrors({ ...errors, phone: '' }); }}
                   placeholder="e.g. +989123456789"
+                  type="tel"
+                  inputMode="tel"
                   className={`w-full px-4 py-2.5 bg-[#0f172a] border rounded-lg text-white focus:outline-none ${errors.phone ? 'border-red-500' : 'border-[#334155] focus:border-[#D4AF37]'}`}
                 />
                 {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}

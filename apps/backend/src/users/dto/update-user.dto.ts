@@ -15,6 +15,10 @@ export class UpdateUserDto {
 }
 
 export class AdminUpdateUserDto extends UpdateUserDto {
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

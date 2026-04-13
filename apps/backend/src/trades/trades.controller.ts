@@ -46,11 +46,15 @@ export class TradesController {
     @CurrentUser('id') userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
   ) {
     return this.tradesService.getTradeHistory(
       userId,
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 20,
+      fromDate,
+      toDate,
     );
   }
 

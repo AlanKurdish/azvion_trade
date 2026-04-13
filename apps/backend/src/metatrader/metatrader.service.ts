@@ -31,6 +31,9 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
   private priceWs: WebSocket | null = null;
   private positionPollTimer: NodeJS.Timeout | null = null;
 
+  // Formula cache: mtSymbol -> Array<{ symbolId, formula }>
+  private formulaCache: Map<string, Array<{ symbolId: string; formula: string }>> = new Map();
+
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
@@ -101,6 +104,7 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
 
       this.priceWs.onopen = () => {
         this.logger.log('Price stream connected');
+        this.refreshFormulaCache();
         this.subscribeToTradableSymbols();
         this.subscribeToOpenPositions();
       };
@@ -139,6 +143,53 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
     if (this.priceWs) {
       this.priceWs.close();
       this.priceWs = null;
+    }
+  }
+
+  /**
+   * Refresh the formula cache from the database.
+   * Called on startup and whenever symbols are created/updated.
+   */
+  async refreshFormulaCache() {
+    const symbols = await this.prisma.symbol.findMany({
+      where: { isTradable: true, isDeleted: false, formula: { not: null } },
+      select: { id: true, mtSymbol: true, formula: true },
+    });
+
+    this.formulaCache.clear();
+    for (const s of symbols) {
+      if (!s.formula) continue;
+      const list = this.formulaCache.get(s.mtSymbol) || [];
+      list.push({ symbolId: s.id, formula: s.formula });
+      this.formulaCache.set(s.mtSymbol, list);
+    }
+    this.logger.log(`Formula cache refreshed: ${symbols.length} formulas loaded`);
+  }
+
+  /**
+   * Safely evaluate a price formula. Variables: ask, bid.
+   * Example formula: "(ask*2/3.1)" or "ask*0.97" or "(bid+ask)/2*1000"
+   */
+  private evaluateFormula(formula: string, bid: number, ask: number): number | null {
+    try {
+      // Only allow: numbers, operators, parentheses, dots, spaces, and the words 'ask'/'bid'
+      const sanitized = formula.replace(/\s/g, '');
+      if (!/^[0-9+\-*/().askbid]+$/i.test(sanitized)) {
+        this.logger.warn(`Invalid formula rejected: ${formula}`);
+        return null;
+      }
+
+      // Replace ask/bid with values (case-insensitive)
+      const expr = sanitized
+        .replace(/ask/gi, String(ask))
+        .replace(/bid/gi, String(bid));
+
+      // Evaluate using Function (safe since we validated the chars)
+      const result = new Function(`return (${expr})`)();
+      if (typeof result !== 'number' || !isFinite(result)) return null;
+      return result;
+    } catch {
+      return null;
     }
   }
 
@@ -225,29 +276,44 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
       trade_mode?: number;
     }>,
   ) {
+    // Build user price data with formula results
+    const userPrices: any[] = [];
+
     for (const price of prices) {
-      const priceData = {
-        symbol: price.symbol,
-        bid: price.bid,
-        ask: price.ask,
-        timestamp: price.time,
-        tradeMode: price.trade_mode ?? 4, // 4 = FULL (open)
-      };
-      // Forward to Flutter clients via Socket.IO (room-based)
-      this.wsGateway.emitPriceUpdate(price.symbol, priceData);
+      const tradeMode = price.trade_mode ?? 4;
+      const formulas = this.formulaCache.get(price.symbol);
+
+      if (formulas && formulas.length > 0) {
+        // Symbol has formula(s) — compute and send formulaPrice per symbol ID
+        for (const f of formulas) {
+          const formulaPrice = this.evaluateFormula(f.formula, price.bid, price.ask);
+          const priceData = {
+            symbol: price.symbol,
+            symbolId: f.symbolId,
+            formulaPrice: formulaPrice,
+            timestamp: price.time,
+            tradeMode,
+          };
+          this.wsGateway.emitPriceUpdate(price.symbol, priceData);
+          userPrices.push(priceData);
+        }
+      } else {
+        // No formula — send formulaPrice as ask price (always send formulaPrice)
+        const priceData = {
+          symbol: price.symbol,
+          formulaPrice: price.ask,
+          timestamp: price.time,
+          tradeMode,
+        };
+        this.wsGateway.emitPriceUpdate(price.symbol, priceData);
+        userPrices.push(priceData);
+      }
     }
 
-    // Also broadcast to ALL connected clients so Flutter gets prices
-    // even before subscribing to specific rooms
-    this.wsGateway.broadcastToAll('price:update:all', prices.map((p) => ({
-      symbol: p.symbol,
-      bid: p.bid,
-      ask: p.ask,
-      timestamp: p.time,
-      tradeMode: p.trade_mode ?? 4,
-    })));
+    // Broadcast to ALL user clients
+    this.wsGateway.broadcastToAll('price:update:all', userPrices);
 
-    // Also stream prices to admin room
+    // Admin always gets raw bid/ask (no formula applied)
     this.wsGateway.emitAdminPriceUpdate(
       prices.map((p) => ({
         symbol: p.symbol,
@@ -257,7 +323,6 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
         tradeMode: p.trade_mode ?? 4,
       })),
     );
-    // P&L is streamed from MT5 positions, NOT calculated from prices
   }
 
   /**

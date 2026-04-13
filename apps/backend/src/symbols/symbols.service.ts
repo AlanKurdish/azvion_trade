@@ -13,8 +13,9 @@ export class SymbolsService {
 
   async create(dto: CreateSymbolDto) {
     const symbol = await this.prisma.symbol.create({ data: dto });
-    // Re-subscribe so new symbol gets price streaming
+    // Re-subscribe so new symbol gets price streaming + refresh formula cache
     await this.mtService.subscribeToTradableSymbols();
+    await this.mtService.refreshFormulaCache();
     return symbol;
   }
 
@@ -41,8 +42,9 @@ export class SymbolsService {
   async update(id: string, dto: UpdateSymbolDto) {
     await this.findOne(id);
     const symbol = await this.prisma.symbol.update({ where: { id }, data: dto });
-    // Re-subscribe in case isTradable changed
+    // Re-subscribe in case isTradable changed + refresh formula cache
     await this.mtService.subscribeToTradableSymbols();
+    await this.mtService.refreshFormulaCache();
     return symbol;
   }
 

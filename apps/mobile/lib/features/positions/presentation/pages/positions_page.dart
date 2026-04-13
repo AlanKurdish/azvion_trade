@@ -199,21 +199,22 @@ class _TradeCard extends StatelessWidget {
     final tradeId = trade['id']?.toString() ?? '';
     final symbolName = trade['symbol']?['displayName'] ?? 'Unknown';
     final mtSymbol = trade['symbol']?['mtSymbol']?.toString() ?? '';
+    final symbolId = trade['symbolId']?.toString() ?? '';
     final type = trade['type']?.toString() ?? 'BUY';
-    final openPrice = double.tryParse(trade['openPrice']?.toString() ?? '0') ?? 0;
+    // Show formula price (customerPrice) as the open price, not MT5 market price
+    final customerPrice = double.tryParse(trade['customerPrice']?.toString() ?? '0') ?? 0;
     final lotSize = trade['lotSize']?.toString() ?? '-';
     final commission = double.tryParse(trade['commission']?.toString() ?? '0') ?? 0;
     final isClosing = state.closingTradeId == tradeId;
 
     // Live P&L from WebSocket
     final pnl = state.livePnl[tradeId];
-    final currentPrice = (pnl?['currentPrice'] as num?)?.toDouble();
     final unrealizedPnl = (pnl?['mtProfit'] as num?)?.toDouble();
 
-    // Live price fallback
-    final livePrice = state.livePrices[mtSymbol];
-    final bid = (livePrice?['bid'] as num?)?.toDouble();
-    final displayCurrentPrice = currentPrice ?? bid;
+    // Live formula price: lookup by symbolId first, then mtSymbol
+    final livePrice = state.livePrices[symbolId] ?? state.livePrices[mtSymbol];
+    final liveFormulaPrice = (livePrice?['formulaPrice'] as num?)?.toDouble();
+    final displayCurrentPrice = liveFormulaPrice;
 
     final isBuy = type == 'BUY';
     final pnlColor = (unrealizedPnl ?? 0) >= 0 ? Colors.green : Colors.red;
@@ -258,7 +259,7 @@ class _TradeCard extends StatelessWidget {
                     children: [
                       Text(t.tr('openLabel'), style: const TextStyle(color: Colors.grey, fontSize: 10)),
                       Text(
-                        '\$${_formatPrice(openPrice)}',
+                        '\$${_formatPrice(customerPrice)}',
                         style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                       ),
                     ],
@@ -364,103 +365,374 @@ class _TradeCard extends StatelessWidget {
   }
 }
 
-class _HistoryTab extends StatelessWidget {
+class _HistoryTab extends StatefulWidget {
+  @override
+  State<_HistoryTab> createState() => _HistoryTabState();
+}
+
+class _HistoryTabState extends State<_HistoryTab> {
+  DateTime? _fromDate;
+  DateTime? _toDate;
+
+  void _loadWithFilters() {
+    context.read<PositionsBloc>().add(LoadHistory(fromDate: _fromDate, toDate: _toDate));
+  }
+
+  Future<void> _pickDate(bool isFrom) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isFrom ? (_fromDate ?? now) : (_toDate ?? now),
+      firstDate: DateTime(2024),
+      lastDate: now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFFD4AF37),
+              onPrimary: Colors.black,
+              surface: Color(0xFF1e293b),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        if (isFrom) {
+          _fromDate = picked;
+        } else {
+          _toDate = picked;
+        }
+      });
+      _loadWithFilters();
+    }
+  }
+
+  String _formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    return BlocBuilder<PositionsBloc, PositionsState>(
-      builder: (context, state) {
-        if (state is PositionsLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (state is PositionsError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                const SizedBox(height: 12),
-                Text(state.message, style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => context.read<PositionsBloc>().add(LoadHistory()),
-                  child: Text(t.tr('retry')),
+    return Column(
+      children: [
+        // Date filter bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _pickDate(true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1e293b),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF334155)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 14, color: Color(0xFFD4AF37)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _fromDate != null ? _formatDate(_fromDate!) : t.tr('from'),
+                          style: TextStyle(color: _fromDate != null ? Colors.white : Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _pickDate(false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1e293b),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF334155)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 14, color: Color(0xFFD4AF37)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _toDate != null ? _formatDate(_toDate!) : t.tr('to'),
+                          style: TextStyle(color: _toDate != null ? Colors.white : Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (_fromDate != null || _toDate != null) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    setState(() { _fromDate = null; _toDate = null; });
+                    _loadWithFilters();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.close, size: 16, color: Colors.red),
+                  ),
                 ),
               ],
-            ),
-          );
-        }
-        if (state is HistoryLoaded) {
-          if (state.trades.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.history, size: 64, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  Text(t.tr('noTradeHistory'), style: const TextStyle(color: Colors.grey, fontSize: 16)),
-                ],
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: state.trades.length,
-            itemBuilder: (context, index) {
-              final trade = state.trades[index];
-              final pnl = double.tryParse(trade['profitLoss']?.toString() ?? '0') ?? 0;
-              final openPrice = double.tryParse(trade['openPrice']?.toString() ?? '0') ?? 0;
-              final closePrice = double.tryParse(trade['closePrice']?.toString() ?? '0') ?? 0;
-              final symbolName = trade['symbol']?['displayName'] ?? 'Unknown';
-              final type = trade['type']?.toString() ?? 'BUY';
-              final isBuy = type == 'BUY';
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 6),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        // Trade list
+        Expanded(
+          child: BlocBuilder<PositionsBloc, PositionsState>(
+            builder: (context, state) {
+              if (state is PositionsLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is PositionsError) {
+                return Center(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isBuy ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(type, style: TextStyle(color: isBuy ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 11)),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(symbolName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                          const Spacer(),
-                          Text(
-                            '${pnl >= 0 ? '+' : ''}\$${pnl.toStringAsFixed(2)}',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: pnl >= 0 ? Colors.green : Colors.red),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Open: \$${_formatPrice(openPrice)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text('Close: \$${_formatPrice(closePrice)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text(
-                            trade['closedAt'] != null ? DateTime.parse(trade['closedAt']).toLocal().toString().substring(0, 16) : '',
-                            style: const TextStyle(color: Colors.grey, fontSize: 11),
-                          ),
-                        ],
+                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      const SizedBox(height: 12),
+                      Text(state.message, style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadWithFilters,
+                        child: Text(t.tr('retry')),
                       ),
                     ],
                   ),
-                ),
-              );
+                );
+              }
+              if (state is HistoryLoaded) {
+                final stats = state.stats;
+                final deposit = (stats['totalDeposit'] as num?)?.toDouble() ?? 0;
+                final withdraw = (stats['totalWithdrawal'] as num?)?.toDouble() ?? 0;
+                final totalPnl = (stats['totalPnl'] as num?)?.toDouble() ?? 0;
+                final totalComm = (stats['totalCommission'] as num?)?.toDouble() ?? 0;
+                final balance = (stats['balance'] as num?)?.toDouble() ?? 0;
+                final closedCount = (stats['closedTradesCount'] as num?)?.toInt() ?? 0;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: state.trades.length + 1, // +1 for stats header
+                  itemBuilder: (context, index) {
+                    // First item = stats card
+                    if (index == 0) {
+                      return Column(
+                        children: [
+                          // Balance card
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1e293b), Color(0xFF0f172a)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(t.tr('balance'), style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '\$${balance.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontFamily: 'monospace'),
+                                ),
+                                const SizedBox(height: 4),
+                                Text('$closedCount ${t.tr('closedTrades')}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Stats grid
+                          Row(
+                            children: [
+                              _StatCard(
+                                icon: Icons.arrow_downward,
+                                iconColor: Colors.green,
+                                label: t.tr('deposit'),
+                                value: '\$${deposit.toStringAsFixed(2)}',
+                              ),
+                              const SizedBox(width: 8),
+                              _StatCard(
+                                icon: Icons.arrow_upward,
+                                iconColor: Colors.red,
+                                label: t.tr('withdraw'),
+                                value: '\$${withdraw.toStringAsFixed(2)}',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _StatCard(
+                                icon: Icons.trending_up,
+                                iconColor: totalPnl >= 0 ? Colors.green : Colors.red,
+                                label: t.tr('totalPnl'),
+                                value: '${totalPnl >= 0 ? '+' : ''}\$${totalPnl.toStringAsFixed(2)}',
+                                valueColor: totalPnl >= 0 ? Colors.green : Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              _StatCard(
+                                icon: Icons.receipt_long,
+                                iconColor: Colors.orange,
+                                label: t.tr('totalCommission'),
+                                value: '\$${totalComm.toStringAsFixed(2)}',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (state.trades.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 32),
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.history, size: 48, color: Colors.grey),
+                                  const SizedBox(height: 8),
+                                  Text(t.tr('noTradeHistory'), style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+                    }
+
+                    // Trade items (index - 1 because index 0 is stats)
+                    final tradeIndex = index - 1;
+                    final trade = state.trades[tradeIndex];
+                    final pnl = double.tryParse(trade['profitLoss']?.toString() ?? '0') ?? 0;
+                    final customerPrice = double.tryParse(trade['customerPrice']?.toString() ?? '0') ?? 0;
+                    final closePrice = double.tryParse(trade['customerClosePrice']?.toString() ?? '') ??
+                        double.tryParse(trade['closePrice']?.toString() ?? '0') ?? 0;
+                    final symbolName = trade['symbol']?['displayName'] ?? 'Unknown';
+                    final type = trade['type']?.toString() ?? 'BUY';
+                    final isBuy = type == 'BUY';
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isBuy ? Colors.green.withValues(alpha: 0.15) : Colors.red.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(type, style: TextStyle(color: isBuy ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 11)),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(symbolName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                const Spacer(),
+                                Text(
+                                  '${pnl >= 0 ? '+' : ''}\$${pnl.toStringAsFixed(2)}',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: pnl >= 0 ? Colors.green : Colors.red),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Open: \$${_formatPrice(customerPrice)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                Text('Close: \$${_formatPrice(closePrice)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                Text(
+                                  trade['closedAt'] != null ? DateTime.parse(trade['closedAt']).toLocal().toString().substring(0, 16) : '',
+                                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+              return Center(child: Text(t.tr('tapHistoryToLoad')));
             },
-          );
-        }
-        return Center(child: Text(t.tr('tapHistoryToLoad')));
-      },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _StatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1e293b),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF334155)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: iconColor),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      fontFamily: 'monospace',
+                      color: valueColor ?? Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

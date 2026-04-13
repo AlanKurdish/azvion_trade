@@ -59,9 +59,10 @@ class TradePnlUpdated extends TradeEvent {
 }
 
 class PriceUpdated extends TradeEvent {
-  final double bid;
-  final double ask;
-  PriceUpdated(this.bid, this.ask);
+  final double? bid;
+  final double? ask;
+  final double? formulaPrice;
+  PriceUpdated({this.bid, this.ask, this.formulaPrice});
 }
 
 // --- States ---
@@ -78,16 +79,17 @@ class TradeReady extends TradeState {
   final List<Map<String, dynamic>> openTrades;
   final double? liveBid;
   final double? liveAsk;
+  final double? liveFormulaPrice;
   final bool isBuying;
   final String? successMessage;
   final String? errorMessage;
-  // Per-trade P&L data: tradeId -> {currentPrice, unrealizedPnl}
   final Map<String, Map<String, double>> tradePnls;
 
   TradeReady({
     required this.openTrades,
     this.liveBid,
     this.liveAsk,
+    this.liveFormulaPrice,
     this.isBuying = false,
     this.successMessage,
     this.errorMessage,
@@ -98,6 +100,7 @@ class TradeReady extends TradeState {
     List<Map<String, dynamic>>? openTrades,
     double? liveBid,
     double? liveAsk,
+    double? liveFormulaPrice,
     bool? isBuying,
     String? successMessage,
     String? errorMessage,
@@ -107,6 +110,7 @@ class TradeReady extends TradeState {
       openTrades: openTrades ?? this.openTrades,
       liveBid: liveBid ?? this.liveBid,
       liveAsk: liveAsk ?? this.liveAsk,
+      liveFormulaPrice: liveFormulaPrice ?? this.liveFormulaPrice,
       isBuying: isBuying ?? this.isBuying,
       successMessage: successMessage,
       errorMessage: errorMessage,
@@ -115,7 +119,7 @@ class TradeReady extends TradeState {
   }
 
   @override
-  List<Object?> get props => [openTrades, liveBid, liveAsk, isBuying, successMessage, errorMessage, tradePnls];
+  List<Object?> get props => [openTrades, liveBid, liveAsk, liveFormulaPrice, isBuying, successMessage, errorMessage, tradePnls];
 }
 
 // --- Bloc ---
@@ -167,6 +171,7 @@ class TradeBloc extends Bloc<TradeEvent, TradeState> {
         openTrades: newTrades,
         liveBid: current.liveBid,
         liveAsk: current.liveAsk,
+        liveFormulaPrice: current.liveFormulaPrice,
         tradePnls: current.tradePnls,
         successMessage: 'Trade opened successfully!',
       ));
@@ -192,6 +197,7 @@ class TradeBloc extends Bloc<TradeEvent, TradeState> {
         openTrades: updatedTrades,
         liveBid: current.liveBid,
         liveAsk: current.liveAsk,
+        liveFormulaPrice: current.liveFormulaPrice,
         tradePnls: updatedPnls,
         successMessage: 'Trade closed successfully!',
       ));
@@ -202,9 +208,18 @@ class TradeBloc extends Bloc<TradeEvent, TradeState> {
 
   void _onPriceUpdated(PriceUpdated event, Emitter<TradeState> emit) {
     if (state is TradeReady) {
-      emit((state as TradeReady).copyWith(liveBid: event.bid, liveAsk: event.ask));
+      emit((state as TradeReady).copyWith(
+        liveBid: event.bid,
+        liveAsk: event.ask,
+        liveFormulaPrice: event.formulaPrice,
+      ));
     } else {
-      emit(TradeReady(openTrades: const [], liveBid: event.bid, liveAsk: event.ask));
+      emit(TradeReady(
+        openTrades: const [],
+        liveBid: event.bid,
+        liveAsk: event.ask,
+        liveFormulaPrice: event.formulaPrice,
+      ));
     }
   }
 
@@ -224,15 +239,21 @@ class TradeBloc extends Bloc<TradeEvent, TradeState> {
     }
   }
 
-  void subscribeToPriceStream(String mtSymbol) {
+  String? _subscribedSymbolId;
+
+  void subscribeToPriceStream(String mtSymbol, {String? symbolId}) {
     _priceSub?.cancel();
+    _subscribedSymbolId = symbolId;
     _wsClient.subscribePrices([mtSymbol]);
     _priceSub = _wsClient.on('price:update').listen((data) {
       if (data is Map<String, dynamic> && data['symbol'] == mtSymbol) {
-        final bid = (data['bid'] as num?)?.toDouble();
-        final ask = (data['ask'] as num?)?.toDouble();
-        if (bid != null && ask != null) {
-          add(PriceUpdated(bid, ask));
+        // If symbolId is set, only accept prices for this specific symbol
+        if (_subscribedSymbolId != null && data['symbolId'] != null) {
+          if (data['symbolId'] != _subscribedSymbolId) return;
+        }
+        final formulaPrice = (data['formulaPrice'] as num?)?.toDouble();
+        if (formulaPrice != null) {
+          add(PriceUpdated(formulaPrice: formulaPrice));
         }
       }
     });

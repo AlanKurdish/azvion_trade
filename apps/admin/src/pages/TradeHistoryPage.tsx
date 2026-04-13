@@ -6,6 +6,16 @@ import { TrendingUp, TrendingDown, RefreshCw, Search, XCircle, X, Calendar } fro
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+/** Smart price formatting based on magnitude */
+function formatPrice(price: number): string {
+  if (price === 0) return '0';
+  const abs = Math.abs(price);
+  if (abs >= 1000) return price.toFixed(2);
+  if (abs >= 10) return price.toFixed(3);
+  if (abs >= 1) return price.toFixed(4);
+  return price.toFixed(5);
+}
+
 export default function TradeHistoryPage() {
   const { t } = useTranslation();
   const [trades, setTrades] = useState<any[]>([]);
@@ -227,8 +237,10 @@ export default function TradeHistoryPage() {
           <tbody>
             {trades.map((tr) => {
               const pnl = livePnl[tr.id];
-              const currentPrice = pnl?.currentPrice ?? null;
               const pnlValue = pnl?.mtProfit ?? null;
+              // Show formula prices (customerPrice/customerClosePrice), not MT5 prices
+              const formulaOpenPrice = tr.customerPrice ? parseFloat(tr.customerPrice) : parseFloat(tr.openPrice);
+              const formulaClosePrice = tr.customerClosePrice ? parseFloat(tr.customerClosePrice) : (tr.closePrice ? parseFloat(tr.closePrice) : null);
 
               return (
                 <tr key={tr.id} className="border-b border-[#334155]/50 hover:bg-white/5">
@@ -241,12 +253,10 @@ export default function TradeHistoryPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">{tr.lotSize}</td>
-                  <td className="px-4 py-3">${parseFloat(tr.openPrice).toFixed(2)}</td>
+                  <td className="px-4 py-3">${formatPrice(formulaOpenPrice)}</td>
                   <td className="px-4 py-3">
-                    {tr.status === 'CLOSED' ? (
-                      <span>${parseFloat(tr.closePrice).toFixed(2)}</span>
-                    ) : currentPrice ? (
-                      <span className="text-[#D4AF37] font-mono">${Number(currentPrice).toFixed(2)}</span>
+                    {tr.status === 'CLOSED' && formulaClosePrice != null ? (
+                      <span>${formatPrice(formulaClosePrice)}</span>
                     ) : (
                       <span className="text-gray-500">-</span>
                     )}

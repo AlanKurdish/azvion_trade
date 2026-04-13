@@ -32,9 +32,9 @@ export class CreateSymbolDto {
   @IsOptional()
   amountLabel?: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  price: number;
+  @IsString()
+  @IsOptional()
+  formula?: string;
 
   @Type(() => Number)
   @IsNumber()
