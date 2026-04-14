@@ -7,6 +7,7 @@
     "users": "المستخدمين",
     "trades": "الصفقات",
     "symbols": "الرموز",
+    "slideshow": "عرض الشرائح",
     "settings": "الإعدادات",
     "history": "سجل الصفقات",
     "logout": "تسجيل الخروج"
@@ -312,6 +313,36 @@
     "equity": "حقوق الملكية",
     "floatingPnl": "الربح/الخسارة العائم",
     "disconnected": "MT5 غير متصل"
+  },
+
+  "slideshow": {
+    "title": "عرض الشرائح",
+    "addSlide": "إضافة شريحة",
+    "editSlide": "تعديل شريحة",
+    "noSlides": "لا توجد شرائح بعد",
+    "slideTitle": "العنوان",
+    "imageUrl": "رابط الصورة",
+    "description": "الوصف",
+    "link": "الرابط",
+    "order": "الترتيب",
+    "active": "مفعل",
+    "inactive": "غير مفعل",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "create": "إنشاء",
+    "saving": "جاري الحفظ...",
+    "confirmDelete": "هل أنت متأكد من حذف هذه الشريحة؟",
+    "image": "الصورة",
+    "dropOrClick": "اسحب الصورة هنا أو انقر للاختيار",
+    "changeImage": "انقر لتغيير الصورة",
+    "uploading": "جاري الرفع...",
+    "uploadFailed": "فشل الرفع",
+    "fileTooLarge": "الملف كبير جداً. الحد الأقصى 5 ميجابايت",
+    "invalidType": "نوع الملف غير صالح. استخدم JPG أو PNG أو WebP أو GIF",
+    "imageRequired": "يرجى رفع صورة",
+    "titleOptional": "العنوان (اختياري)"
   },
 
   "common": {

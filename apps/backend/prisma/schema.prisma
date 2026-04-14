@@ -149,3 +149,18 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+model Slideshow {
+  id          String   @id @default(uuid())
+  title       String?  @db.VarChar(255)
+  imageUrl    String   @map("image_url") @db.Text
+  description String?  @db.Text
+  link        String?  @db.VarChar(500)
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("slideshows")
+}

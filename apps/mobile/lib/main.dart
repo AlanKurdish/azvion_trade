@@ -14,6 +14,7 @@ import 'l10n/app_localizations.dart';
 import 'l10n/language_provider.dart';
 
 final languageProvider = LanguageProvider();
+final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,7 @@ class _AzinAppState extends State<AzinApp> {
   void initState() {
     super.initState();
     languageProvider.addListener(() => setState(() {}));
+    themeNotifier.addListener(() => setState(() {}));
   }
 
   @override
@@ -76,7 +78,9 @@ class _AzinAppState extends State<AzinApp> {
       child: MaterialApp(
         title: 'Azin',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkThemeFor(locale.languageCode),
+        theme: AppTheme.lightThemeFor(locale.languageCode),
+        darkTheme: AppTheme.darkThemeFor(locale.languageCode),
+        themeMode: themeNotifier.value,
         locale: locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.allDelegates,
@@ -88,8 +92,13 @@ class _AzinAppState extends State<AzinApp> {
         },
         home: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {},
+          buildWhen: (previous, current) {
+            // Don't rebuild shells on AuthError or AuthLoading — only on actual auth transitions
+            if (current is AuthError || current is AuthLoading) return false;
+            return true;
+          },
           builder: (context, state) {
-            if (state is AuthInitial || state is AuthLoading) {
+            if (state is AuthInitial) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
@@ -114,7 +123,7 @@ class _GuestShell extends StatefulWidget {
 }
 
 class _GuestShellState extends State<_GuestShell> {
-  int _index = 0;
+  int _index = 1; // Start on login tab
 
   @override
   void initState() {

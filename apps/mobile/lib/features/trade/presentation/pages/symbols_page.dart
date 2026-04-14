@@ -196,10 +196,12 @@ class _TabChip extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFD4AF37) : const Color(0xFF1e293b),
+            color: selected
+                ? const Color(0xFFD4AF37)
+                : Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? const Color(0xFFD4AF37) : const Color(0xFF334155),
+              color: selected ? const Color(0xFFD4AF37) : Theme.of(context).dividerColor,
             ),
           ),
           child: Text(
@@ -339,7 +341,11 @@ class _SymbolCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: const Color(0xFF0f172a), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF0f172a) : const Color(0xFFF0F0F0),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Row(children: [
                     Container(width: 5, height: 5, decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle)),
                     const SizedBox(width: 5),

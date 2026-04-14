@@ -1,6 +1,7 @@
 class ApiConstants {
   static const String _baseHost = 'http://10.0.2.2:3000';
 
+  static String get host => _baseHost;
   static String get baseUrl => '$_baseHost/api';
   static String get wsUrl => '$_baseHost/ws';
 
@@ -29,4 +30,7 @@ class ApiConstants {
 
   // Settings
   static const String privacyPolicy = '/settings/privacy-policy';
+
+  // Slideshow
+  static const String slideshow = '/slideshow';
 }

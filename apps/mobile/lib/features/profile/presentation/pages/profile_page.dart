@@ -17,10 +17,8 @@ class ProfilePage extends StatelessWidget {
     return BlocProvider(
       create: (_) => sl<ProfileBloc>()..add(LoadProfile()),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0f172a),
         appBar: AppBar(
           title: Text(t.tr('profile')),
-          backgroundColor: Colors.transparent,
           elevation: 0,
         ),
         body: BlocBuilder<ProfileBloc, ProfileState>(
@@ -52,6 +50,7 @@ class _ProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final firstName = profile['firstName'] ?? '';
     final lastName = profile['lastName'] ?? '';
     final fullName = '$firstName $lastName'.trim();
@@ -60,6 +59,11 @@ class _ProfileContent extends StatelessWidget {
     final initials = (firstName.isNotEmpty ? firstName[0] : '') +
         (lastName.isNotEmpty ? lastName[0] : '');
 
+    final cardColor = isDark ? const Color(0xFF1e293b) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB);
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subtextColor = isDark ? Colors.grey[500] : Colors.grey[600];
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -67,11 +71,13 @@ class _ProfileContent extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF1e293b), Color(0xFF0f172a)],
+                colors: isDark
+                    ? [const Color(0xFF1e293b), const Color(0xFF0f172a)]
+                    : [const Color(0xFFF8F9FA), const Color(0xFFF0F0F0)],
               ),
             ),
             child: Column(
@@ -98,28 +104,24 @@ class _ProfileContent extends StatelessWidget {
                   child: Center(
                     child: Text(
                       initials.isNotEmpty ? initials.toUpperCase() : '?',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   fullName.isNotEmpty ? fullName : t.tr('profile'),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
                 ),
                 const SizedBox(height: 4),
-                Text(phone, style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+                Text(phone, style: TextStyle(fontSize: 14, color: subtextColor)),
                 const SizedBox(height: 20),
                 // Balance card
                 if (balance != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1e293b),
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
                     ),
@@ -138,15 +140,11 @@ class _ProfileContent extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(t.tr('balance'), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                            Text(t.tr('balance'), style: TextStyle(fontSize: 11, color: subtextColor)),
                             const SizedBox(height: 2),
                             Text(
                               '\$$balance',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFD4AF37),
-                              ),
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37)),
                             ),
                           ],
                         ),
@@ -190,6 +188,15 @@ class _ProfileContent extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
+                // Theme section
+                _SectionCard(
+                  children: [
+                    _ThemeToggleItem(),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
                 // App section
                 _SectionCard(
                   children: [
@@ -217,25 +224,19 @@ class _ProfileContent extends StatelessWidget {
                     _MenuItem(
                       icon: Icons.language,
                       title: 'English',
-                      onTap: () {
-                        languageProvider.setLocale(const Locale('en'));
-                      },
+                      onTap: () => languageProvider.setLocale(const Locale('en')),
                     ),
                     const _Divider(),
                     _MenuItem(
                       icon: Icons.language,
                       title: 'العربية',
-                      onTap: () {
-                        languageProvider.setLocale(const Locale('ar'));
-                      },
+                      onTap: () => languageProvider.setLocale(const Locale('ar')),
                     ),
                     const _Divider(),
                     _MenuItem(
                       icon: Icons.language,
                       title: 'کوردی',
-                      onTap: () {
-                        languageProvider.setLocale(const Locale('ckb'));
-                      },
+                      onTap: () => languageProvider.setLocale(const Locale('ckb')),
                     ),
                   ],
                 ),
@@ -251,10 +252,11 @@ class _ProfileContent extends StatelessWidget {
                       iconColor: Colors.red,
                       titleColor: Colors.red,
                       onTap: () {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
-                            backgroundColor: const Color(0xFF1e293b),
+                            backgroundColor: isDark ? const Color(0xFF1e293b) : Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             title: Text(t.tr('logout')),
                             content: Text(t.tr('logoutConfirm')),
@@ -290,6 +292,7 @@ class _ProfileContent extends StatelessWidget {
 
   void _showEditSheet(BuildContext context, Map<String, dynamic> profile) {
     final t = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final firstNameCtrl = TextEditingController(text: profile['firstName'] ?? '');
     final lastNameCtrl = TextEditingController(text: profile['lastName'] ?? '');
 
@@ -299,19 +302,18 @@ class _ProfileContent extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1e293b),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1e293b) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle bar
             Center(
               child: Container(
                 width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: Colors.grey[isDark ? 700 : 400], borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
@@ -328,10 +330,10 @@ class _ProfileContent extends StatelessWidget {
                     onPressed: () => Navigator.pop(ctx),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: Colors.grey[700]!),
+                      side: BorderSide(color: Colors.grey[isDark ? 700 : 400]!),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: Text(t.tr('cancel'), style: TextStyle(color: Colors.grey[400])),
+                    child: Text(t.tr('cancel'), style: TextStyle(color: Colors.grey[isDark ? 400 : 600])),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -361,6 +363,69 @@ class _ProfileContent extends StatelessWidget {
   }
 }
 
+class _ThemeToggleItem extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = AppLocalizations.of(context);
+    return InkWell(
+      onTap: () {
+        // Toggle between light and dark by changing system UI
+        // We use a ValueNotifier approach through the main app
+        themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD4AF37).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isDark ? Icons.dark_mode : Icons.light_mode,
+                color: const Color(0xFFD4AF37),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                t.tr('theme'),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isDark ? t.tr('dark') : t.tr('light'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: Colors.grey[isDark ? 700 : 400], size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EditField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -369,15 +434,16 @@ class _EditField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return TextField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey[500]),
         prefixIcon: Icon(icon, color: const Color(0xFFD4AF37), size: 20),
         filled: true,
-        fillColor: const Color(0xFF0f172a),
+        fillColor: isDark ? const Color(0xFF0f172a) : const Color(0xFFF0F0F0),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -395,11 +461,12 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1e293b),
+        color: isDark ? const Color(0xFF1e293b) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB)),
       ),
       child: Column(children: children),
     );
@@ -427,6 +494,7 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -447,7 +515,7 @@ class _MenuItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: titleColor ?? Colors.white, fontSize: 15)),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: titleColor ?? (isDark ? Colors.white : Colors.black87), fontSize: 15)),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(subtitle!, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
@@ -458,7 +526,7 @@ class _MenuItem extends StatelessWidget {
             if (trailing != null)
               trailing!
             else if (onTap != null)
-              Icon(Icons.chevron_right, color: Colors.grey[700], size: 20),
+              Icon(Icons.chevron_right, color: Colors.grey[isDark ? 700 : 400], size: 20),
           ],
         ),
       ),
@@ -471,9 +539,10 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Divider(height: 1, color: Colors.grey[800]),
+      child: Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[300]),
     );
   }
 }
@@ -485,8 +554,7 @@ class _PrivacyPolicyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0f172a),
-      appBar: AppBar(title: Text(t.tr('privacyPolicy')), backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(title: Text(t.tr('privacyPolicy')), elevation: 0),
       body: FutureBuilder<String>(
         future: sl<ProfileDatasource>().getPrivacyPolicy(),
         builder: (context, snapshot) {
@@ -497,7 +565,7 @@ class _PrivacyPolicyPage extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Text(
               snapshot.data ?? t.tr('noPrivacyPolicy'),
-              style: TextStyle(color: Colors.grey[300], height: 1.6),
+              style: TextStyle(color: Colors.grey[Theme.of(context).brightness == Brightness.dark ? 300 : 700], height: 1.6),
             ),
           );
         },

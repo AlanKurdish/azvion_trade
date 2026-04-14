@@ -10,6 +10,7 @@ import { BalanceModule } from './balance/balance.module';
 import { MetatraderModule } from './metatrader/metatrader.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { SettingsModule } from './settings/settings.module';
+import { SlideshowModule } from './slideshow/slideshow.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SettingsModule } from './settings/settings.module';
     MetatraderModule,
     WebsocketModule,
     SettingsModule,
+    SlideshowModule,
   ],
 })
 export class AppModule {}

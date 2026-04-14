@@ -305,13 +305,9 @@ class _TradeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            // Row 3: Commission + Close button
+            // Row 3: Close button
             Row(
               children: [
-                Text(
-                  'Comm: \$${commission.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
-                ),
                 const Spacer(),
                 SizedBox(
                   height: 30,
@@ -386,13 +382,20 @@ class _HistoryTabState extends State<_HistoryTab> {
       firstDate: DateTime(2024),
       lastDate: now,
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFD4AF37),
-              onPrimary: Colors.black,
-              surface: Color(0xFF1e293b),
-            ),
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFFD4AF37),
+                    onPrimary: Colors.black,
+                    surface: Color(0xFF1e293b),
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFFD4AF37),
+                    onPrimary: Colors.black,
+                    surface: Colors.white,
+                  ),
           ),
           child: child!,
         );
@@ -428,9 +431,9 @@ class _HistoryTabState extends State<_HistoryTab> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1e293b),
+                      color: Theme.of(context).cardTheme.color,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF334155)),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Row(
                       children: [
@@ -438,7 +441,7 @@ class _HistoryTabState extends State<_HistoryTab> {
                         const SizedBox(width: 6),
                         Text(
                           _fromDate != null ? _formatDate(_fromDate!) : t.tr('from'),
-                          style: TextStyle(color: _fromDate != null ? Colors.white : Colors.grey, fontSize: 12),
+                          style: TextStyle(color: _fromDate != null ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87) : Colors.grey, fontSize: 12),
                         ),
                       ],
                     ),
@@ -452,9 +455,9 @@ class _HistoryTabState extends State<_HistoryTab> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1e293b),
+                      color: Theme.of(context).cardTheme.color,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF334155)),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Row(
                       children: [
@@ -462,7 +465,7 @@ class _HistoryTabState extends State<_HistoryTab> {
                         const SizedBox(width: 6),
                         Text(
                           _toDate != null ? _formatDate(_toDate!) : t.tr('to'),
-                          style: TextStyle(color: _toDate != null ? Colors.white : Colors.grey, fontSize: 12),
+                          style: TextStyle(color: _toDate != null ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87) : Colors.grey, fontSize: 12),
                         ),
                       ],
                     ),
@@ -536,8 +539,10 @@ class _HistoryTabState extends State<_HistoryTab> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF1e293b), Color(0xFF0f172a)],
+                              gradient: LinearGradient(
+                                colors: Theme.of(context).brightness == Brightness.dark
+                                    ? [const Color(0xFF1e293b), const Color(0xFF0f172a)]
+                                    : [Colors.white, const Color(0xFFF8F9FA)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -585,13 +590,6 @@ class _HistoryTabState extends State<_HistoryTab> {
                                 label: t.tr('totalPnl'),
                                 value: '${totalPnl >= 0 ? '+' : ''}\$${totalPnl.toStringAsFixed(2)}',
                                 valueColor: totalPnl >= 0 ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 8),
-                              _StatCard(
-                                icon: Icons.receipt_long,
-                                iconColor: Colors.orange,
-                                label: t.tr('totalCommission'),
-                                value: '\$${totalComm.toStringAsFixed(2)}',
                               ),
                             ],
                           ),
@@ -692,13 +690,14 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1e293b),
+          color: isDark ? const Color(0xFF1e293b) : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF334155)),
+          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB)),
         ),
         child: Row(
           children: [

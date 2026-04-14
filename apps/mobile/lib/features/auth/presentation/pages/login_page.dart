@@ -26,23 +26,50 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0a0e1a), Color(0xFF0f1628), Color(0xFF0a0e1a)],
+            colors: isDark
+                ? [const Color(0xFF0a0e1a), const Color(0xFF0f1628), const Color(0xFF0a0e1a)]
+                : [const Color(0xFFF8F9FA), const Color(0xFFFFFFFF), const Color(0xFFF8F9FA)],
           ),
         ),
         child: SafeArea(
           child: BlocListener<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
+                final t = AppLocalizations.of(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Color(0xFFD4AF37), size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            state.message.contains('Invalid credentials') || state.message.contains('Unauthorized')
+                                ? t.tr('wrongCredentials')
+                                : state.message,
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: isDark ? const Color(0xFF1a1f2e) : Colors.white,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: isDark ? const Color(0xFF2a3040) : const Color(0xFFE0E0E0)),
+                    ),
+                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    duration: const Duration(seconds: 3),
+                  ),
                 );
               }
             },
@@ -76,10 +103,10 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
                       Text(
                         t.tr('login'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w300,
-                          color: Color(0xFF8a8a9a),
+                          color: isDark ? const Color(0xFF8a8a9a) : const Color(0xFF6B7280),
                           letterSpacing: 2,
                         ),
                       ),
@@ -88,20 +115,20 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                         decoration: InputDecoration(
                           labelText: t.tr('phoneNumber'),
-                          labelStyle: const TextStyle(color: Color(0xFF6b7280)),
+                          labelStyle: TextStyle(color: isDark ? const Color(0xFF6b7280) : const Color(0xFF9CA3AF)),
                           prefixIcon: const Icon(Icons.phone, color: Color(0xFFD4AF37), size: 20),
                           filled: true,
-                          fillColor: const Color(0xFF1a1f2e),
+                          fillColor: isDark ? const Color(0xFF1a1f2e) : const Color(0xFFF0F0F0),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2a3040)),
+                            borderSide: BorderSide(color: isDark ? const Color(0xFF2a3040) : const Color(0xFFE0E0E0)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2a3040)),
+                            borderSide: BorderSide(color: isDark ? const Color(0xFF2a3040) : const Color(0xFFE0E0E0)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -115,28 +142,28 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                         decoration: InputDecoration(
                           labelText: t.tr('password'),
-                          labelStyle: const TextStyle(color: Color(0xFF6b7280)),
+                          labelStyle: TextStyle(color: isDark ? const Color(0xFF6b7280) : const Color(0xFF9CA3AF)),
                           prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFD4AF37), size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                              color: const Color(0xFF6b7280),
+                              color: isDark ? const Color(0xFF6b7280) : const Color(0xFF9CA3AF),
                               size: 20,
                             ),
                             onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                           ),
                           filled: true,
-                          fillColor: const Color(0xFF1a1f2e),
+                          fillColor: isDark ? const Color(0xFF1a1f2e) : const Color(0xFFF0F0F0),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2a3040)),
+                            borderSide: BorderSide(color: isDark ? const Color(0xFF2a3040) : const Color(0xFFE0E0E0)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF2a3040)),
+                            borderSide: BorderSide(color: isDark ? const Color(0xFF2a3040) : const Color(0xFFE0E0E0)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -166,7 +193,7 @@ class _LoginPageState extends State<LoginPage> {
                                     },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFD4AF37),
-                                foregroundColor: const Color(0xFF0a0e1a),
+                                foregroundColor: Colors.black,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),

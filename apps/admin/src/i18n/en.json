@@ -7,6 +7,7 @@
     "users": "Users",
     "trades": "Trades",
     "symbols": "Symbols",
+    "slideshow": "Slideshow",
     "settings": "Settings",
     "history": "Trade History",
     "logout": "Logout"
@@ -312,6 +313,36 @@
     "equity": "Equity",
     "floatingPnl": "Floating P&L",
     "disconnected": "MT5 Disconnected"
+  },
+
+  "slideshow": {
+    "title": "Slideshow",
+    "addSlide": "Add Slide",
+    "editSlide": "Edit Slide",
+    "noSlides": "No slides added yet",
+    "slideTitle": "Title",
+    "imageUrl": "Image URL",
+    "description": "Description",
+    "link": "Link",
+    "order": "Order",
+    "active": "Active",
+    "inactive": "Inactive",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "saving": "Saving...",
+    "confirmDelete": "Are you sure you want to delete this slide?",
+    "image": "Image",
+    "dropOrClick": "Drop image here or click to select",
+    "changeImage": "Click to change image",
+    "uploading": "Uploading...",
+    "uploadFailed": "Upload failed",
+    "fileTooLarge": "File too large. Maximum 5MB allowed",
+    "invalidType": "Invalid file type. Use JPG, PNG, WebP or GIF",
+    "imageRequired": "Please upload an image",
+    "titleOptional": "Title (optional)"
   },
 
   "common": {

@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../bloc/dashboard_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/websocket_client.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../l10n/app_localizations.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -15,12 +18,18 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final WebSocketClient _wsClient = sl<WebSocketClient>();
+  final ApiClient _apiClient = sl<ApiClient>();
   int _onlineCount = 0;
   StreamSubscription? _onlineSub;
   StreamSubscription? _priceSub;
-  // Track market status per symbol: true = open (tradeMode == 4)
   final Map<String, int> _symbolTradeMode = {};
   bool get _isMarketOpen => _symbolTradeMode.isNotEmpty && _symbolTradeMode.values.any((m) => m == 4);
+
+  // Slideshow
+  List<Map<String, dynamic>> _slides = [];
+  int _currentSlide = 0;
+  final PageController _pageController = PageController();
+  Timer? _autoSlideTimer;
 
   @override
   void initState() {
@@ -37,12 +46,45 @@ class _DashboardPageState extends State<DashboardPage> {
         });
       }
     });
+    _loadSlides();
+  }
+
+  Future<void> _openLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  String _resolveImageUrl(String url) {
+    if (url.startsWith('http')) return url;
+    return '${ApiConstants.host}$url';
+  }
+
+  Future<void> _loadSlides() async {
+    try {
+      final response = await _apiClient.dio.get('/slideshow');
+      final data = response.data as List;
+      setState(() {
+        _slides = data.cast<Map<String, dynamic>>();
+      });
+      if (_slides.length > 1) {
+        _autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+          if (_pageController.hasClients) {
+            final next = (_currentSlide + 1) % _slides.length;
+            _pageController.animateToPage(next, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _onlineSub?.cancel();
     _priceSub?.cancel();
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -52,7 +94,43 @@ class _DashboardPageState extends State<DashboardPage> {
     return BlocProvider(
       create: (_) => sl<DashboardBloc>()..add(LoadDashboard()),
       child: Scaffold(
-        appBar: AppBar(title: Text(t.tr('dashboard'))),
+        appBar: AppBar(
+          title: Text(t.tr('dashboard')),
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _onlineCount > 0 ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7, height: 7,
+                    decoration: BoxDecoration(
+                      color: _onlineCount > 0 ? Colors.green : Colors.grey,
+                      shape: BoxShape.circle,
+                      boxShadow: _onlineCount > 0
+                          ? [BoxShadow(color: Colors.green.withOpacity(0.5), blurRadius: 4)]
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$_onlineCount ${t.tr('online')}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _onlineCount > 0 ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         body: BlocBuilder<DashboardBloc, DashboardState>(
           builder: (context, state) {
             if (state is DashboardLoading) {
@@ -65,10 +143,15 @@ class _DashboardPageState extends State<DashboardPage> {
               return RefreshIndicator(
                 onRefresh: () async {
                   context.read<DashboardBloc>().add(LoadDashboard());
+                  await _loadSlides();
                 },
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    if (_slides.isNotEmpty) ...[
+                      _buildSlideshow(),
+                      const SizedBox(height: 16),
+                    ],
                     _buildMarketStatusCard(),
                     const SizedBox(height: 16),
                     _buildBalanceCard(context, state),
@@ -87,6 +170,99 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _buildSlideshow() {
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _slides.length,
+            onPageChanged: (i) => setState(() => _currentSlide = i),
+            itemBuilder: (context, index) {
+              final slide = _slides[index];
+              final hasTitle = slide['title'] != null && slide['title'].toString().isNotEmpty;
+              final hasDesc = slide['description'] != null && slide['description'].toString().isNotEmpty;
+              final link = slide['link']?.toString() ?? '';
+              return GestureDetector(
+                onTap: link.isNotEmpty ? () => _openLink(link) : null,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        _resolveImageUrl(slide['imageUrl'] ?? ''),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Theme.of(context).cardTheme.color,
+                          child: const Center(child: Icon(Icons.image, color: Colors.grey, size: 40)),
+                        ),
+                      ),
+                      if (hasTitle || hasDesc)
+                        Positioned(
+                          bottom: 0, left: 0, right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (hasTitle)
+                                  Text(
+                                    slide['title'],
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                if (hasDesc)
+                                  Text(
+                                    slide['description'],
+                                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (_slides.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_slides.length, (i) {
+              return Container(
+                width: _currentSlide == i ? 20 : 6,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  color: _currentSlide == i ? const Color(0xFFD4AF37) : Colors.grey.withOpacity(0.3),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildBalanceCard(BuildContext context, DashboardLoaded state) {
     final t = AppLocalizations.of(context);
     return Card(
@@ -95,41 +271,8 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(t.tr('accountBalance'),
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey)),
-                // Online users indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _onlineCount > 0 ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6, height: 6,
-                        decoration: BoxDecoration(
-                          color: _onlineCount > 0 ? Colors.green : Colors.grey,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$_onlineCount ${t.tr('online')}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: _onlineCount > 0 ? Colors.green : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            Text(t.tr('accountBalance'),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey)),
             const SizedBox(height: 8),
             Text(
               '\$${state.balance.toStringAsFixed(2)}',
@@ -159,11 +302,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     color: isProfit ? Colors.green : Colors.red,
                     fontWeight: FontWeight.bold,
                   ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${t.tr('commission')}: \$${state.monthlyCommission.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
           ],
         ),

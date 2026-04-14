@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:dio/dio.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/network/websocket_client.dart';
 
@@ -85,6 +86,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   String _extractError(dynamic e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final msg = data['message'];
+        if (msg is List) return msg.join(', ');
+        if (msg is String) return msg;
+      }
+      return 'Connection error';
+    }
     if (e is Exception) {
       return e.toString().replaceAll('Exception: ', '');
     }
