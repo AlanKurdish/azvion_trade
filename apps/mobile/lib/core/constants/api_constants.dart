@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String _baseHost = 'http://10.0.2.2:3000';
+  static const String _baseHost = 'http://azne-app.com';
 
   static String get host => _baseHost;
   static String get baseUrl => '$_baseHost/api';
@@ -17,6 +17,9 @@ class ApiConstants {
 
   // Symbols
   static const String symbols = '/symbols';
+
+  // Symbol Categories
+  static const String symbolCategories = '/symbol-categories';
 
   // Trades
   static const String openTrade = '/trades/open';

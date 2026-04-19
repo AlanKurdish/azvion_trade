@@ -7,6 +7,7 @@
     "users": "بەکارهێنەران",
     "trades": "مامەڵەکان",
     "symbols": "هێماکان",
+    "categories": "پۆلەکان",
     "slideshow": "نیشاندانی وێنە",
     "settings": "ڕێکخستنەکان",
     "history": "مێژووی مامەڵەکان",
@@ -245,7 +246,31 @@
     "cancel": "پاشگەزبوونەوە",
     "update": "نوێکردنەوە",
     "create": "دروستکردن",
-    "deleteConfirm": "سڕینەوەی {{name}} ({{symbol}})؟"
+    "deleteConfirm": "سڕینەوەی {{name}} ({{symbol}})؟",
+    "category": "پۆل",
+    "noCategory": "— بێ پۆل —",
+    "readOnly": "تەنها بۆ خوێندنەوە"
+  },
+
+  "categories": {
+    "title": "پۆلی هێماکان",
+    "addCategory": "زیادکردنی پۆل",
+    "editCategory": "دەستکاری پۆل",
+    "noCategories": "هێشتا هیچ پۆلێک نییە. پۆلێک دروست بکە بۆ کۆکردنەوەی هێماکان.",
+    "nameEn": "ناو (ئینگلیزی)",
+    "nameAr": "ناو (عەرەبی)",
+    "nameCkb": "ناو (کوردی)",
+    "order": "ڕیزبەندی",
+    "active": "چالاک",
+    "inactive": "ناچالاک",
+    "status": "بارودۆخ",
+    "symbols": "هێماکان",
+    "actions": "کردارەکان",
+    "cancel": "پاشگەزبوونەوە",
+    "save": "پاشەکەوتکردن",
+    "create": "دروستکردن",
+    "saving": "پاشەکەوتکردن...",
+    "confirmDelete": "سڕینەوەی پۆلی \"{{name}}\"؟ هێماکان لێی جیا دەکرێنەوە."
   },
 
   "settings": {

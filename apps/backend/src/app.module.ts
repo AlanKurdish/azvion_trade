@@ -11,6 +11,7 @@ import { MetatraderModule } from './metatrader/metatrader.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { SettingsModule } from './settings/settings.module';
 import { SlideshowModule } from './slideshow/slideshow.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SlideshowModule } from './slideshow/slideshow.module';
     WebsocketModule,
     SettingsModule,
     SlideshowModule,
+    CategoriesModule,
   ],
 })
 export class AppModule {}

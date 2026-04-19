@@ -31,6 +31,8 @@ const Map<String, String> ckb = {
   // Symbols / Trade
   'trade': 'مامەڵە',
   'all': 'هەمووی',
+  'other': 'ئەوانی تر',
+  'readOnly': 'تەنها بۆ بینین',
   'noSymbols': 'هیچ هێمایەک بەردەست نییە',
   'waitingPrice': 'چاوەڕوانی نرخی ڕاستەوخۆ...',
   'live': 'ڕاستەوخۆ',

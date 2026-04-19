@@ -10,6 +10,7 @@ import SymbolsPage from './pages/SymbolsPage';
 import SettingsPage from './pages/SettingsPage';
 import TradeHistoryPage from './pages/TradeHistoryPage';
 import SlideshowPage from './pages/SlideshowPage';
+import CategoriesPage from './pages/CategoriesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="trades" element={<TradesPage />} />
           <Route path="history" element={<TradeHistoryPage />} />
           <Route path="symbols" element={<SymbolsPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
           <Route path="slideshow" element={<SlideshowPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

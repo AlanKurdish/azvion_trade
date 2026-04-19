@@ -17,7 +17,9 @@ export default function SymbolsPage() {
   const [form, setForm] = useState({
     name: '', displayName: '', mtSymbol: '',
     lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false,
+    isReadOnly: false, categoryId: '' as string,
   });
+  const [categories, setCategories] = useState<Array<{ id: string; nameEn: string; nameAr: string; nameCkb: string }>>([]);
 
   // MT symbols picker
   const [showMtPicker, setShowMtPicker] = useState(false);
@@ -31,7 +33,16 @@ export default function SymbolsPage() {
     setSymbols(data);
   };
 
-  useEffect(() => { loadSymbols(); }, []);
+  const loadCategories = async () => {
+    try {
+      const { data } = await api.get('/symbol-categories/all');
+      setCategories(data);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => { loadSymbols(); loadCategories(); }, []);
 
   const loadMtSymbols = async () => {
     setMtLoading(true);
@@ -62,6 +73,8 @@ export default function SymbolsPage() {
       formula: '',
       commission: '0',
       isTradable: false,
+      isReadOnly: false,
+      categoryId: '',
     });
     setShowMtPicker(false);
     setEditing(null);
@@ -75,6 +88,7 @@ export default function SymbolsPage() {
       lotSize: parseFloat(form.lotSize),
       amount: parseFloat(form.amount),
       commission: parseFloat(form.commission || '0'),
+      categoryId: form.categoryId || null,
     };
     if (!payload.amountLabel) delete payload.amountLabel;
     if (!payload.formula) delete payload.formula;
@@ -87,7 +101,7 @@ export default function SymbolsPage() {
     }
     setShowForm(false);
     setEditing(null);
-    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false });
+    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false, isReadOnly: false, categoryId: '' });
     loadSymbols();
   };
 
@@ -97,6 +111,7 @@ export default function SymbolsPage() {
       name: sym.name, displayName: sym.displayName, mtSymbol: sym.mtSymbol,
       lotSize: String(sym.lotSize), amount: String(sym.amount), amountLabel: sym.amountLabel || '',
       formula: sym.formula || '', commission: String(sym.commission), isTradable: sym.isTradable,
+      isReadOnly: !!sym.isReadOnly, categoryId: sym.categoryId || '',
     });
     setShowForm(true);
   };
@@ -133,7 +148,7 @@ export default function SymbolsPage() {
           <button onClick={openAddFromMt} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
             <Download size={18} /> {t('symbols.importMt5')}
           </button>
-          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
+          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false, isReadOnly: false, categoryId: '' }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
             <Plus size={18} /> {t('symbols.addManual')}
           </button>
         </div>
@@ -149,7 +164,9 @@ export default function SymbolsPage() {
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.amount')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.formula')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.commission')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.category')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.tradable')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.readOnly')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.actions')}</th>
             </tr>
           </thead>
@@ -162,10 +179,20 @@ export default function SymbolsPage() {
                 <td className="px-6 py-3">{sym.amount}{sym.amountLabel && <span className="text-gray-400 text-xs ms-1">({sym.amountLabel})</span>}</td>
                 <td className="px-6 py-3 text-gray-400 text-sm font-mono">{sym.formula || '—'}</td>
                 <td className="px-6 py-3">${sym.commission}</td>
+                <td className="px-6 py-3 text-gray-400 text-sm">
+                  {sym.category ? sym.category.nameEn : <span className="text-gray-600">—</span>}
+                </td>
                 <td className="px-6 py-3">
                   <button onClick={() => toggleTradable(sym)} className={`w-10 h-5 rounded-full transition-colors ${sym.isTradable ? 'bg-green-500' : 'bg-gray-600'}`}>
                     <span className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${sym.isTradable ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
+                </td>
+                <td className="px-6 py-3">
+                  {sym.isReadOnly ? (
+                    <span className="inline-block px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">{t('symbols.readOnly')}</span>
+                  ) : (
+                    <span className="text-gray-600 text-xs">—</span>
+                  )}
                 </td>
                 <td className="px-6 py-3 flex gap-3">
                   <button onClick={() => startEdit(sym)} className="text-[#D4AF37] hover:underline">
@@ -178,7 +205,7 @@ export default function SymbolsPage() {
               </tr>
             ))}
             {symbols.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-gray-400">{t('symbols.noSymbols')}</td></tr>
+              <tr><td colSpan={10} className="text-center py-8 text-gray-400">{t('symbols.noSymbols')}</td></tr>
             )}
           </tbody>
         </table>
@@ -281,9 +308,23 @@ export default function SymbolsPage() {
               <input value={form.amountLabel} onChange={(e) => setForm({ ...form, amountLabel: e.target.value })} placeholder={t('symbols.amountLabelPlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
               <input value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} placeholder={t('symbols.formulaPlaceholder')} className="col-span-2 px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white font-mono" />
               <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={t('symbols.commissionPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white"
+              >
+                <option value="">{t('symbols.noCategory')}</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nameEn}</option>
+                ))}
+              </select>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={form.isTradable} onChange={(e) => setForm({ ...form, isTradable: e.target.checked })} className="w-4 h-4" />
                 <span>{t('symbols.tradable')}</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={form.isReadOnly} onChange={(e) => setForm({ ...form, isReadOnly: e.target.checked })} className="w-4 h-4" />
+                <span>{t('symbols.readOnly')}</span>
               </label>
               <div className="col-span-2 flex gap-3 pt-2">
                 <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="flex-1 py-2.5 border border-[#334155] rounded-lg">{t('symbols.cancel')}</button>

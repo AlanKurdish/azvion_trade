@@ -10,6 +10,11 @@ class TradeDatasource {
     return response.data;
   }
 
+  Future<List<dynamic>> getCategories() async {
+    final response = await _apiClient.dio.get(ApiConstants.symbolCategories);
+    return response.data;
+  }
+
   Future<List<dynamic>> getOpenTrades() async {
     final response = await _apiClient.dio.get(ApiConstants.openTrades);
     return response.data;

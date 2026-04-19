@@ -20,7 +20,8 @@ class _SymbolsPageState extends State<SymbolsPage> {
   final Map<String, Map<String, dynamic>> _livePrices = {};
   StreamSubscription? _priceSub;
   List<String> _subscribedSymbols = [];
-  String _selectedTab = ''; // '' = All
+  // Selected category id — empty string = All; 'uncat' = symbols with no category
+  String _selectedCategoryId = '';
 
   @override
   void initState() {
@@ -61,27 +62,24 @@ class _SymbolsPageState extends State<SymbolsPage> {
     super.dispose();
   }
 
-  /// Strip broker suffix from MT symbol (e.g., XAUUSD.ecn → XAUUSD, AAPL.raw → AAPL)
-  String _baseSymbol(String mtSymbol) {
-    final dot = mtSymbol.indexOf('.');
-    return dot > 0 ? mtSymbol.substring(0, dot) : mtSymbol;
-  }
-
-  /// Get unique MT symbol base names for tabs
-  List<String> _getTabNames(List<dynamic> symbols) {
-    final names = <String>{};
-    for (final s in symbols) {
-      final base = _baseSymbol(s['mtSymbol']?.toString() ?? '');
-      if (base.isNotEmpty) names.add(base);
+  /// Pick the right language field for the category name
+  String _categoryLabel(Map<String, dynamic> cat, String langCode) {
+    switch (langCode) {
+      case 'ar':
+        return cat['nameAr']?.toString() ?? cat['nameEn']?.toString() ?? '';
+      case 'ckb':
+        return cat['nameCkb']?.toString() ?? cat['nameEn']?.toString() ?? '';
+      default:
+        return cat['nameEn']?.toString() ?? '';
     }
-    return names.toList()..sort();
   }
 
   List<dynamic> _filterSymbols(List<dynamic> symbols) {
-    if (_selectedTab.isEmpty) return symbols;
-    return symbols.where((s) {
-      return _baseSymbol(s['mtSymbol']?.toString() ?? '') == _selectedTab;
-    }).toList();
+    if (_selectedCategoryId.isEmpty) return symbols;
+    if (_selectedCategoryId == 'uncat') {
+      return symbols.where((s) => s['categoryId'] == null).toList();
+    }
+    return symbols.where((s) => s['categoryId'] == _selectedCategoryId).toList();
   }
 
   bool get _isLoggedIn {
@@ -96,6 +94,7 @@ class _SymbolsPageState extends State<SymbolsPage> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final langCode = Localizations.localeOf(context).languageCode;
 
     return BlocProvider(
       create: (_) => sl<SymbolsBloc>()..add(LoadSymbols()),
@@ -119,31 +118,39 @@ class _SymbolsPageState extends State<SymbolsPage> {
                 return Center(child: Text(t.tr('noSymbols'), style: const TextStyle(color: Colors.grey)));
               }
 
-              final tabNames = _getTabNames(state.symbols);
+              final categories = state.categories;
+              final hasUncategorized = state.symbols.any((s) => s['categoryId'] == null);
               final filtered = _filterSymbols(state.symbols);
 
               return Column(
                 children: [
-                  // Horizontal tab bar
-                  SizedBox(
-                    height: 44,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      children: [
-                        _TabChip(
-                          label: t.tr('all'),
-                          selected: _selectedTab.isEmpty,
-                          onTap: () => setState(() => _selectedTab = ''),
-                        ),
-                        ...tabNames.map((name) => _TabChip(
-                          label: name,
-                          selected: _selectedTab == name,
-                          onTap: () => setState(() => _selectedTab = name),
-                        )),
-                      ],
+                  // Horizontal tab bar — from backend categories
+                  if (categories.isNotEmpty || hasUncategorized)
+                    SizedBox(
+                      height: 44,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        children: [
+                          _TabChip(
+                            label: t.tr('all'),
+                            selected: _selectedCategoryId.isEmpty,
+                            onTap: () => setState(() => _selectedCategoryId = ''),
+                          ),
+                          ...categories.map((cat) => _TabChip(
+                                label: _categoryLabel(cat as Map<String, dynamic>, langCode),
+                                selected: _selectedCategoryId == cat['id'],
+                                onTap: () => setState(() => _selectedCategoryId = cat['id']?.toString() ?? ''),
+                              )),
+                          if (hasUncategorized)
+                            _TabChip(
+                              label: t.tr('other'),
+                              selected: _selectedCategoryId == 'uncat',
+                              onTap: () => setState(() => _selectedCategoryId = 'uncat'),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
 
                   // Symbol list
                   Expanded(
@@ -240,12 +247,13 @@ class _SymbolCard extends StatelessWidget {
     final formulaPrice = livePrice != null ? (livePrice!['formulaPrice'] as num?)?.toDouble() : null;
     final tradeMode = livePrice != null ? (livePrice!['tradeMode'] as num?)?.toInt() ?? 4 : null;
     final isSymbolOpen = tradeMode == null || tradeMode == 4;
+    final isReadOnly = symbol['isReadOnly'] == true;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: isLoggedIn
+        onTap: (isLoggedIn && !isReadOnly)
             ? () async {
                 final result = await Navigator.push(
                   context,
@@ -268,7 +276,11 @@ class _SymbolCard extends StatelessWidget {
                       color: const Color(0xFFD4AF37).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.monetization_on, color: Color(0xFFD4AF37), size: 22),
+                    child: Icon(
+                      isReadOnly ? Icons.lock_outline : Icons.monetization_on,
+                      color: const Color(0xFFD4AF37),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -284,7 +296,21 @@ class _SymbolCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (tradeMode != null) ...[
+                            if (isReadOnly) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  t.tr('readOnly'),
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.amber),
+                                ),
+                              ),
+                            ],
+                            if (tradeMode != null && !isReadOnly) ...[
                               const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),

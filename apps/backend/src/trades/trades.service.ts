@@ -48,6 +48,10 @@ export class TradesService {
       throw new BadRequestException('Symbol is not available for trading');
     }
 
+    if (symbol.isReadOnly) {
+      throw new BadRequestException('Symbol is read-only and cannot be traded');
+    }
+
     // Build comment: use name if ASCII, otherwise phone
     const fullName = user?.firstName
       ? `${user.firstName} ${user.lastName || ''}`.trim()

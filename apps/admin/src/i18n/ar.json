@@ -7,6 +7,7 @@
     "users": "المستخدمين",
     "trades": "الصفقات",
     "symbols": "الرموز",
+    "categories": "الفئات",
     "slideshow": "عرض الشرائح",
     "settings": "الإعدادات",
     "history": "سجل الصفقات",
@@ -245,7 +246,31 @@
     "cancel": "إلغاء",
     "update": "تحديث",
     "create": "إنشاء",
-    "deleteConfirm": "حذف {{name}} ({{symbol}})؟"
+    "deleteConfirm": "حذف {{name}} ({{symbol}})؟",
+    "category": "الفئة",
+    "noCategory": "— بدون فئة —",
+    "readOnly": "للقراءة فقط"
+  },
+
+  "categories": {
+    "title": "فئات الرموز",
+    "addCategory": "إضافة فئة",
+    "editCategory": "تعديل الفئة",
+    "noCategories": "لا توجد فئات بعد. أنشئ فئة لتجميع الرموز.",
+    "nameEn": "الاسم (إنجليزي)",
+    "nameAr": "الاسم (عربي)",
+    "nameCkb": "الاسم (كردي)",
+    "order": "الترتيب",
+    "active": "مفعل",
+    "inactive": "غير مفعل",
+    "status": "الحالة",
+    "symbols": "الرموز",
+    "actions": "الإجراءات",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "create": "إنشاء",
+    "saving": "جاري الحفظ...",
+    "confirmDelete": "حذف الفئة \"{{name}}\"؟ سيتم فصل الرموز منها."
   },
 
   "settings": {

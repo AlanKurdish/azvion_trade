@@ -7,6 +7,7 @@
     "users": "Users",
     "trades": "Trades",
     "symbols": "Symbols",
+    "categories": "Categories",
     "slideshow": "Slideshow",
     "settings": "Settings",
     "history": "Trade History",
@@ -245,7 +246,31 @@
     "cancel": "Cancel",
     "update": "Update",
     "create": "Create",
-    "deleteConfirm": "Delete {{name}} ({{symbol}})?"
+    "deleteConfirm": "Delete {{name}} ({{symbol}})?",
+    "category": "Category",
+    "noCategory": "— No Category —",
+    "readOnly": "Read-Only"
+  },
+
+  "categories": {
+    "title": "Symbol Categories",
+    "addCategory": "Add Category",
+    "editCategory": "Edit Category",
+    "noCategories": "No categories yet. Create one to group your symbols.",
+    "nameEn": "Name (English)",
+    "nameAr": "Name (Arabic)",
+    "nameCkb": "Name (Kurdish)",
+    "order": "Order",
+    "active": "Active",
+    "inactive": "Inactive",
+    "status": "Status",
+    "symbols": "Symbols",
+    "actions": "Actions",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "saving": "Saving...",
+    "confirmDelete": "Delete category \"{{name}}\"? Symbols will be unlinked."
   },
 
   "settings": {

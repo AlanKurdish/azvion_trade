@@ -44,4 +44,12 @@ export class CreateSymbolDto {
   @IsBoolean()
   @IsOptional()
   isTradable?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isReadOnly?: boolean;
+
+  @IsString()
+  @IsOptional()
+  categoryId?: string | null;
 }

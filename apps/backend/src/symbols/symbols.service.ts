@@ -23,6 +23,7 @@ export class SymbolsService {
     return this.prisma.symbol.findMany({
       where: { isTradable: true, isDeleted: false },
       orderBy: { name: 'asc' },
+      include: { category: true },
     });
   }
 
@@ -30,6 +31,7 @@ export class SymbolsService {
     return this.prisma.symbol.findMany({
       where: { isDeleted: false },
       orderBy: { name: 'asc' },
+      include: { category: true },
     });
   }
 

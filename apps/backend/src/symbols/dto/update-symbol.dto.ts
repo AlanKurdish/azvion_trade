@@ -41,4 +41,12 @@ export class UpdateSymbolDto {
   @IsBoolean()
   @IsOptional()
   isTradable?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isReadOnly?: boolean;
+
+  @IsString()
+  @IsOptional()
+  categoryId?: string | null;
 }

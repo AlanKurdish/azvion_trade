@@ -16,9 +16,10 @@ class SymbolsInitial extends SymbolsState {}
 class SymbolsLoading extends SymbolsState {}
 class SymbolsLoaded extends SymbolsState {
   final List<dynamic> symbols;
-  SymbolsLoaded(this.symbols);
+  final List<dynamic> categories;
+  SymbolsLoaded(this.symbols, {this.categories = const []});
   @override
-  List<Object?> get props => [symbols];
+  List<Object?> get props => [symbols, categories];
 }
 class SymbolsError extends SymbolsState {
   final String message;
@@ -32,8 +33,11 @@ class SymbolsBloc extends Bloc<SymbolsEvent, SymbolsState> {
     on<LoadSymbols>((event, emit) async {
       emit(SymbolsLoading());
       try {
-        final symbols = await _datasource.getSymbols();
-        emit(SymbolsLoaded(symbols));
+        final results = await Future.wait([
+          _datasource.getSymbols(),
+          _datasource.getCategories(),
+        ]);
+        emit(SymbolsLoaded(results[0], categories: results[1]));
       } catch (e) {
         emit(SymbolsError(e.toString()));
       }

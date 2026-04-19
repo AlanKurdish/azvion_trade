@@ -31,6 +31,8 @@ const Map<String, String> ar = {
   // Symbols / Trade
   'trade': 'التداول',
   'all': 'الكل',
+  'other': 'أخرى',
+  'readOnly': 'للقراءة فقط',
   'noSymbols': 'لا توجد رموز متاحة',
   'waitingPrice': 'في انتظار السعر المباشر...',
   'live': 'مباشر',

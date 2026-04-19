@@ -31,6 +31,8 @@ const Map<String, String> en = {
   // Symbols / Trade
   'trade': 'Trade',
   'all': 'All',
+  'other': 'Other',
+  'readOnly': 'READ ONLY',
   'noSymbols': 'No symbols available',
   'waitingPrice': 'Waiting for live price...',
   'live': 'Live',

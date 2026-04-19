@@ -75,13 +75,33 @@ model Symbol {
   formula     String?  @map("formula") @db.VarChar(500)
   commission  Decimal  @default(0) @db.Decimal(18, 2)
   isTradable  Boolean  @default(false) @map("is_tradable")
+  isReadOnly  Boolean  @default(false) @map("is_read_only")
   isDeleted   Boolean  @default(false) @map("is_deleted")
+  categoryId  String?  @map("category_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  trades Trade[]
+  trades   Trade[]
+  category SymbolCategory? @relation(fields: [categoryId], references: [id])
 
+  @@index([categoryId])
   @@map("symbols")
+}
+
+model SymbolCategory {
+  id         String   @id @default(uuid())
+  nameEn     String   @map("name_en") @db.VarChar(100)
+  nameAr     String   @map("name_ar") @db.VarChar(100)
+  nameCkb    String   @map("name_ckb") @db.VarChar(100)
+  order      Int      @default(0)
+  isActive   Boolean  @default(true) @map("is_active")
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  symbols Symbol[]
+
+  @@map("symbol_categories")
 }
 
 model Trade {
