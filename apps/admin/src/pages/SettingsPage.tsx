@@ -10,6 +10,8 @@ export default function SettingsPage() {
   const [mtError, setMtError] = useState('');
   const [privacyPolicy, setPrivacyPolicy] = useState('');
   const [saved, setSaved] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoSaving, setDemoSaving] = useState(false);
 
   const loadStatus = () => {
     api.get('/mt/status').then(({ data }) => setMtStatus(data)).catch(() => {});
@@ -18,7 +20,21 @@ export default function SettingsPage() {
   useEffect(() => {
     loadStatus();
     api.get('/settings/privacy-policy').then(({ data }) => setPrivacyPolicy(data.value));
+    api.get('/settings/demo-mode').then(({ data }) => setDemoMode(!!data.demoMode)).catch(() => {});
   }, []);
+
+  const toggleDemoMode = async () => {
+    const next = !demoMode;
+    setDemoSaving(true);
+    try {
+      await api.put('/settings/demo_mode', { value: next ? 'true' : 'false' });
+      setDemoMode(next);
+    } catch {
+      // ignore
+    } finally {
+      setDemoSaving(false);
+    }
+  };
 
   const connectMt = async () => {
     if (!mtForm.login || !mtForm.password || !mtForm.server) return;
@@ -148,6 +164,28 @@ export default function SettingsPage() {
             >
               {connecting ? t('settings.connecting') : t('settings.connect')}
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Demo Mode toggle */}
+      <div className="bg-[#1e293b] p-6 rounded-xl border border-[#334155]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">{t('settings.demoMode')}</h3>
+            <p className="text-sm text-gray-400">{t('settings.demoModeHelp')}</p>
+          </div>
+          <button
+            onClick={toggleDemoMode}
+            disabled={demoSaving}
+            className={`w-12 h-6 rounded-full transition-colors shrink-0 ${demoMode ? 'bg-[#D4AF37]' : 'bg-gray-600'} ${demoSaving ? 'opacity-50' : ''}`}
+          >
+            <span className={`block w-5 h-5 bg-white rounded-full transform transition-transform ${demoMode ? 'translate-x-6' : 'translate-x-0.5'}`} />
+          </button>
+        </div>
+        {demoMode && (
+          <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-sm">
+            {t('settings.demoModeActive')}
           </div>
         )}
       </div>

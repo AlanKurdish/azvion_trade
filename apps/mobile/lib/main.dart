@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 // flutter_localizations imported via app_localizations.dart
+import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/trade/presentation/pages/symbols_page.dart';
+import 'features/profile/presentation/pages/demo_profile_page.dart';
 import 'features/onboarding/language_selection_page.dart';
 import 'features/onboarding/splash_screen.dart';
 import 'core/network/websocket_client.dart';
@@ -19,6 +21,8 @@ final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   initDependencies();
+  // Fire-and-forget config load — UI waits on `appConfig.isLoaded` below
+  appConfig.load();
   runApp(const AzinApp());
 }
 
@@ -37,6 +41,7 @@ class _AzinAppState extends State<AzinApp> {
     super.initState();
     languageProvider.addListener(() => setState(() {}));
     themeNotifier.addListener(() => setState(() {}));
+    appConfig.addListener(() => setState(() {}));
   }
 
   @override
@@ -72,6 +77,27 @@ class _AzinAppState extends State<AzinApp> {
 
     final locale = languageProvider.locale;
     final isRtl = AppLocalizations.rtlLanguages.contains(locale.languageCode);
+
+    // ---- Demo mode: bypass auth, show only prices + minimal profile ----
+    if (appConfig.isLoaded && appConfig.demoMode) {
+      return MaterialApp(
+        title: 'Azin',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightThemeFor(locale.languageCode),
+        darkTheme: AppTheme.darkThemeFor(locale.languageCode),
+        themeMode: themeNotifier.value,
+        locale: locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.allDelegates,
+        builder: (context, child) {
+          return Directionality(
+            textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+            child: child!,
+          );
+        },
+        home: const _DemoShell(),
+      );
+    }
 
     return BlocProvider(
       create: (_) => sl<AuthBloc>()..add(AuthCheckStatus()),
@@ -148,6 +174,48 @@ class _GuestShellState extends State<_GuestShell> {
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.candlestick_chart), label: t.tr('navTrade')),
           BottomNavigationBarItem(icon: const Icon(Icons.login), label: t.tr('login')),
+        ],
+      ),
+    );
+  }
+}
+
+/// Demo shell — shown when backend's demo mode is on.
+/// Only the price list and a minimal profile (theme, language, privacy).
+/// No login, no trading, no user-specific buttons.
+class _DemoShell extends StatefulWidget {
+  const _DemoShell();
+
+  @override
+  State<_DemoShell> createState() => _DemoShellState();
+}
+
+class _DemoShellState extends State<_DemoShell> {
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Connect WebSocket for live prices (no auth token)
+    sl<WebSocketClient>().connect();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final pages = const [
+      SymbolsPage(),
+      DemoProfilePage(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _index, children: pages),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _index,
+        onTap: (i) => setState(() => _index = i),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.candlestick_chart), label: t.tr('navTrade')),
+          BottomNavigationBarItem(icon: const Icon(Icons.person), label: t.tr('navProfile')),
         ],
       ),
     );

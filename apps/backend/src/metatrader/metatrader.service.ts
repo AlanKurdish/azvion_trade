@@ -86,12 +86,25 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
             brokerServer: status.server,
           },
         });
+      } else {
+        this.scheduleBridgeRetry();
       }
     } catch {
       this.logger.warn(
-        'MT5 Bridge not reachable. Start the Python bridge: python apps/mt5-bridge/main.py',
+        'MT5 Bridge not reachable. Retrying in 5s...',
       );
+      this.scheduleBridgeRetry();
     }
+  }
+
+  /** Keep retrying until the bridge comes up (e.g. bridge starts after backend). */
+  private scheduleBridgeRetry() {
+    if (this.priceWs) return; // already connected via another path
+    setTimeout(() => {
+      if (!this.priceWs || (this.priceWs as WebSocket).readyState !== WebSocket.OPEN) {
+        this.checkAndConnect();
+      }
+    }, 5000);
   }
 
   // --- Price WebSocket ---

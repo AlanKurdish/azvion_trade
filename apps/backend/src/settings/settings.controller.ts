@@ -24,6 +24,19 @@ export class SettingsController {
     return { value: setting?.value ?? '' };
   }
 
+  /**
+   * Public: whether the mobile app should run in "demo mode".
+   * In demo mode, the app only shows prices + profile (no login, no trading).
+   */
+  @Get('demo-mode')
+  async getDemoMode() {
+    const setting = await this.prisma.appSetting.findUnique({
+      where: { key: 'demo_mode' },
+    });
+    const enabled = setting?.value === 'true';
+    return { demoMode: enabled };
+  }
+
   @Put(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

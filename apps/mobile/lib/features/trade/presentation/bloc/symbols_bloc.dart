@@ -33,11 +33,17 @@ class SymbolsBloc extends Bloc<SymbolsEvent, SymbolsState> {
     on<LoadSymbols>((event, emit) async {
       emit(SymbolsLoading());
       try {
-        final results = await Future.wait([
-          _datasource.getSymbols(),
-          _datasource.getCategories(),
-        ]);
-        emit(SymbolsLoaded(results[0], categories: results[1]));
+        final symbols = await _datasource.getSymbols();
+        // Categories are optional — if the backend doesn't expose them yet
+        // (e.g. older deployment), fall back to an empty list so the price
+        // list still renders without a tab bar.
+        List<dynamic> categories = const [];
+        try {
+          categories = await _datasource.getCategories();
+        } catch (_) {
+          categories = const [];
+        }
+        emit(SymbolsLoaded(symbols, categories: categories));
       } catch (e) {
         emit(SymbolsError(e.toString()));
       }

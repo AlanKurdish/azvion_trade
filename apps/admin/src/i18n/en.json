@@ -292,7 +292,10 @@
     "orManual": "or enter credentials manually",
     "privacyPolicy": "Privacy Policy",
     "save": "Save",
-    "saved": "Saved!"
+    "saved": "Saved!",
+    "demoMode": "Demo Mode",
+    "demoModeHelp": "When enabled, the mobile app only shows live prices and privacy policy — login, trading, and user features are hidden.",
+    "demoModeActive": "Demo mode is active. The mobile app is in read-only showcase mode."
   },
 
   "history": {

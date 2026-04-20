@@ -33,6 +33,7 @@ class ApiConstants {
 
   // Settings
   static const String privacyPolicy = '/settings/privacy-policy';
+  static const String demoMode = '/settings/demo-mode';
 
   // Slideshow
   static const String slideshow = '/slideshow';
