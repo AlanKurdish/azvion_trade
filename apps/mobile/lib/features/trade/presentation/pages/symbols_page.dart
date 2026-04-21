@@ -122,6 +122,17 @@ class _SymbolsPageState extends State<SymbolsPage> {
               final hasUncategorized = state.symbols.any((s) => s['categoryId'] == null);
               final filtered = _filterSymbols(state.symbols);
 
+              // Only show symbols whose market is open (tradeMode == 4).
+              // Symbols with no live price yet are kept visible while we wait
+              // for the first WebSocket tick.
+              final visible = filtered.where((sym) {
+                final lp = _livePrices[sym['id']?.toString() ?? '']
+                    ?? _livePrices[sym['mtSymbol']?.toString() ?? ''];
+                if (lp == null) return true; // waiting for first tick — keep visible
+                final tm = (lp['tradeMode'] as num?)?.toInt() ?? 4;
+                return tm == 4; // 4 = market open
+              }).toList();
+
               return Column(
                 children: [
                   // Horizontal tab bar — from backend categories
@@ -152,27 +163,40 @@ class _SymbolsPageState extends State<SymbolsPage> {
                       ),
                     ),
 
-                  // Symbol list
+                  // Symbol list — market-open only
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: () async {
                         context.read<SymbolsBloc>().add(LoadSymbols());
                       },
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final sym = filtered[index];
-                          // Look up by symbol ID first (formula prices), fallback to mtSymbol
-                          final livePrice = _livePrices[sym['id']?.toString() ?? '']
-                              ?? _livePrices[sym['mtSymbol']?.toString() ?? ''];
-                          return _SymbolCard(
-                            symbol: sym,
-                            livePrice: livePrice,
-                            isLoggedIn: _isLoggedIn,
-                          );
-                        },
-                      ),
+                      child: visible.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.access_time, size: 48, color: Colors.grey[600]),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    t.tr('marketClosed'),
+                                    style: TextStyle(color: Colors.grey[500], fontSize: 15),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(12),
+                              itemCount: visible.length,
+                              itemBuilder: (context, index) {
+                                final sym = visible[index];
+                                final livePrice = _livePrices[sym['id']?.toString() ?? '']
+                                    ?? _livePrices[sym['mtSymbol']?.toString() ?? ''];
+                                return _SymbolCard(
+                                  symbol: sym,
+                                  livePrice: livePrice,
+                                  isLoggedIn: _isLoggedIn,
+                                );
+                              },
+                            ),
                     ),
                   ),
                 ],
