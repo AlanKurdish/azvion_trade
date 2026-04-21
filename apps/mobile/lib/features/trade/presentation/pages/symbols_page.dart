@@ -268,10 +268,17 @@ class _SymbolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final formulaPrice = livePrice != null ? (livePrice!['formulaPrice'] as num?)?.toDouble() : null;
     final tradeMode = livePrice != null ? (livePrice!['tradeMode'] as num?)?.toInt() ?? 4 : null;
     final isSymbolOpen = tradeMode == null || tradeMode == 4;
     final isReadOnly = symbol['isReadOnly'] == true;
+    final hasPrice = formulaPrice != null;
+
+    final name = symbol['displayName']?.toString() ?? symbol['name']?.toString() ?? '';
+    final amountLabel = symbol['amountLabel']?.toString() ?? '';
+    final amount = symbol['amount']?.toString() ?? '';
+    final subtitle = amountLabel.isNotEmpty ? '$amount ($amountLabel)' : amount;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -289,123 +296,166 @@ class _SymbolCard extends StatelessWidget {
               }
             : null,
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42, height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD4AF37).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isReadOnly ? Icons.lock_outline : Icons.monetization_on,
-                      color: const Color(0xFFD4AF37),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                symbol['displayName'] ?? symbol['name'],
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (isReadOnly) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  t.tr('readOnly'),
-                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.amber),
-                                ),
-                              ),
-                            ],
-                            if (tradeMode != null && !isReadOnly) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: isSymbolOpen ? Colors.green.withOpacity(0.12) : Colors.red.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  isSymbolOpen ? t.tr('open') : t.tr('closed'),
-                                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: isSymbolOpen ? Colors.green : Colors.red),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          symbol['amountLabel'] != null && symbol['amountLabel'].toString().isNotEmpty
-                              ? '${symbol['amount'] ?? ''} (${symbol['amountLabel']})'
-                              : '${symbol['amount'] ?? ''}',
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Live formula price or static price
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (formulaPrice != null) ...[
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
-                            const SizedBox(width: 4),
-                            Text(
-                              formatPrice(formulaPrice),
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontFamily: 'monospace'),
-                            ),
-                          ],
-                        ),
-                      ] else ...[
-                        const Text(
-                          '...',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFD4AF37)),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              // Waiting indicator when no live price yet
-              if (livePrice == null) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF0f172a) : const Color(0xFFF0F0F0),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(children: [
-                    Container(width: 5, height: 5, decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    Text(t.tr('waitingPrice'), style: TextStyle(color: Colors.grey[600], fontSize: 10)),
-                  ]),
+              // ── Icon ──────────────────────────────────────────────────
+              Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
+                child: Icon(
+                  isReadOnly ? Icons.lock_outline : Icons.monetization_on,
+                  color: const Color(0xFFD4AF37),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // ── Name + subtitle (takes all remaining space) ───────────
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Name + status badge on same line
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isReadOnly) ...[
+                          const SizedBox(width: 5),
+                          _Badge(label: t.tr('readOnly'), color: Colors.amber),
+                        ] else if (tradeMode != null) ...[
+                          const SizedBox(width: 5),
+                          _Badge(
+                            label: isSymbolOpen ? t.tr('open') : t.tr('closed'),
+                            color: isSymbolOpen ? Colors.green : Colors.red,
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    // Waiting indicator inline under the subtitle
+                    if (livePrice == null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 5, height: 5,
+                            decoration: const BoxDecoration(
+                              color: Colors.orange, shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            t.tr('waitingPrice'),
+                            style: TextStyle(color: Colors.grey[500], fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // ── Price (fixed width so it never overlaps the name) ─────
+              SizedBox(
+                width: 96,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasPrice) ...[
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.green, shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              formatPrice(formulaPrice!),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFD4AF37),
+                                fontFamily: 'monospace',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Text(
+                        '—',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Tiny status/label pill used inside the symbol card.
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Badge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
       ),
     );
   }
