@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/di/injection.dart';
 import '../../data/profile_datasource.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -123,7 +124,41 @@ class DemoProfilePage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+
+                  // Made by footer
+                  GestureDetector(
+                    onTap: () => launchUrl(
+                      Uri.parse('https://www.eaaktech.com'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.code, size: 14, color: Colors.grey[500]),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Made by ',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          ),
+                          const Text(
+                            'eaaktech.com',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFD4AF37),
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Color(0xFFD4AF37),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
