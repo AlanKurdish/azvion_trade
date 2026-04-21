@@ -309,95 +309,42 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  String _tradeModeText(int mode, AppLocalizations t) {
-    switch (mode) {
-      case 0: return t.tr('modeDisabled');
-      case 1: return t.tr('modeLongOnly');
-      case 2: return t.tr('modeShortOnly');
-      case 3: return t.tr('modeCloseOnly');
-      case 4: return t.tr('modeOpen');
-      default: return t.tr('modeUnknown');
-    }
-  }
-
   Widget _buildMarketStatusCard() {
     final t = AppLocalizations.of(context);
     final isOpen = _isMarketOpen;
+    final hasData = _symbolTradeMode.isNotEmpty;
+    final color = hasData ? (isOpen ? Colors.green : Colors.red) : Colors.grey;
     return Card(
-      color: isOpen ? Colors.green.withOpacity(0.05) : Colors.red.withOpacity(0.05),
+      color: color.withOpacity(0.05),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: isOpen ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3)),
+        side: BorderSide(color: color.withOpacity(0.3)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 10, height: 10,
-                  decoration: BoxDecoration(
-                    color: isOpen ? Colors.green : Colors.red,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: (isOpen ? Colors.green : Colors.red).withOpacity(0.5), blurRadius: 6)],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isOpen ? t.tr('marketOpen') : t.tr('marketClosed'),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: isOpen ? Colors.green : Colors.red,
-                  ),
-                ),
-              ],
+            Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: hasData
+                    ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 6)]
+                    : null,
+              ),
             ),
-            if (_symbolTradeMode.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _symbolTradeMode.entries.map((e) {
-                  final open = e.value == 4;
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: open ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6, height: 6,
-                          decoration: BoxDecoration(
-                            color: open ? Colors.green : Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          e.key.replaceAll('.ecn', ''),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: open ? Colors.green : Colors.red),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _tradeModeText(e.value, t),
-                          style: TextStyle(fontSize: 10, color: open ? Colors.green.withOpacity(0.7) : Colors.red.withOpacity(0.7)),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+            const SizedBox(width: 10),
+            Text(
+              hasData
+                  ? (isOpen ? t.tr('marketOpen') : t.tr('marketClosed'))
+                  : t.tr('waitingMarketData'),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: color,
               ),
-            ] else
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(t.tr('waitingMarketData'), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ),
+            ),
           ],
         ),
       ),
