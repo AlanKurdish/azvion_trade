@@ -591,6 +591,14 @@ class _HistoryTabState extends State<_HistoryTab> {
                                 value: '${totalPnl >= 0 ? '+' : ''}\$${totalPnl.toStringAsFixed(2)}',
                                 valueColor: totalPnl >= 0 ? Colors.green : Colors.red,
                               ),
+                              const SizedBox(width: 8),
+                              _StatCard(
+                                icon: Icons.receipt_long,
+                                iconColor: const Color(0xFFD4AF37),
+                                label: t.tr('totalCommission'),
+                                value: '\$${totalComm.toStringAsFixed(2)}',
+                                valueColor: const Color(0xFFD4AF37),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -613,6 +621,7 @@ class _HistoryTabState extends State<_HistoryTab> {
                     final tradeIndex = index - 1;
                     final trade = state.trades[tradeIndex];
                     final pnl = double.tryParse(trade['profitLoss']?.toString() ?? '0') ?? 0;
+                    final commission = double.tryParse(trade['commission']?.toString() ?? '0') ?? 0;
                     final customerPrice = double.tryParse(trade['customerPrice']?.toString() ?? '0') ?? 0;
                     final closePrice = double.tryParse(trade['customerClosePrice']?.toString() ?? '') ??
                         double.tryParse(trade['closePrice']?.toString() ?? '0') ?? 0;
@@ -654,6 +663,17 @@ class _HistoryTabState extends State<_HistoryTab> {
                                 Text(
                                   trade['closedAt'] != null ? DateTime.parse(trade['closedAt']).toLocal().toString().substring(0, 16) : '',
                                   style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.receipt_long, size: 12, color: Color(0xFFD4AF37)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${t.tr('commission')}: \$${commission.toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 11, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),

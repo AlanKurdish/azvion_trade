@@ -98,7 +98,6 @@ class _AzinAppState extends State<AzinApp> {
         home: const _DemoShell(),
       );
     }
-
     return BlocProvider(
       create: (_) => sl<AuthBloc>()..add(AuthCheckStatus()),
       child: MaterialApp(
