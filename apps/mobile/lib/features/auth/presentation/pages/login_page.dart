@@ -28,6 +28,10 @@ class _LoginPageState extends State<LoginPage> {
     final t = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      // Inner Scaffold lives inside _GuestShell's Scaffold + IndexedStack.
+      // Let the outer Scaffold manage keyboard insets to avoid double-inset
+      // calculations that can break focus/keyboard in Android emulators.
+      resizeToAvoidBottomInset: true,
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -114,6 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                       // Phone field
                       TextFormField(
                         controller: _phoneController,
+                        autofocus: true,
                         keyboardType: TextInputType.phone,
                         style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                         decoration: InputDecoration(
