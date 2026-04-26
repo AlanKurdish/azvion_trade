@@ -20,19 +20,29 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (phone, password) => {
     set({ isLoading: true });
-    await api.post('/auth/login', { phone, password });
-    set({ otpPhone: phone, isLoading: false });
+    try {
+      await api.post('/auth/login', { phone, password });
+      set({ otpPhone: phone });
+    } finally {
+      // Always clear the loading flag — even on error — so the button
+      // doesn't stay disabled if credentials are wrong or the network fails.
+      set({ isLoading: false });
+    }
   },
 
   verifyOtp: async (phone, code) => {
     set({ isLoading: true });
-    const { data } = await api.post('/auth/verify-otp', { phone, code });
-    if (data.user.role !== 'ADMIN') {
-      throw new Error('Access denied. Admin only.');
+    try {
+      const { data } = await api.post('/auth/verify-otp', { phone, code });
+      if (data.user.role !== 'ADMIN') {
+        throw new Error('Access denied. Admin only.');
+      }
+      localStorage.setItem('admin_token', data.accessToken);
+      localStorage.setItem('admin_refresh_token', data.refreshToken);
+      set({ user: data.user, isAuthenticated: true, otpPhone: null });
+    } finally {
+      set({ isLoading: false });
     }
-    localStorage.setItem('admin_token', data.accessToken);
-    localStorage.setItem('admin_refresh_token', data.refreshToken);
-    set({ user: data.user, isAuthenticated: true, isLoading: false, otpPhone: null });
   },
 
   logout: () => {
