@@ -147,3 +147,96 @@ body {
 .react-datepicker-popper {
   z-index: 50 !important;
 }
+
+/* ── Rich Text Editor (TipTap) ─────────────────────────────────────────── */
+.rte-content {
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.rte-content p { margin: 0 0 0.75em 0; }
+.rte-content p:last-child { margin-bottom: 0; }
+
+.rte-content h1,
+.rte-content h2,
+.rte-content h3 {
+  color: #fff;
+  font-weight: 700;
+  margin: 1em 0 0.5em 0;
+  line-height: 1.2;
+}
+.rte-content h1 { font-size: 1.6em; }
+.rte-content h2 { font-size: 1.35em; }
+.rte-content h3 { font-size: 1.15em; }
+
+.rte-content ul,
+.rte-content ol {
+  margin: 0 0 0.75em 0;
+  padding-left: 1.4em;
+}
+.rte-content ul { list-style: disc; }
+.rte-content ol { list-style: decimal; }
+.rte-content li { margin: 0.15em 0; }
+.rte-content li > p { margin: 0; }
+
+.rte-content blockquote {
+  border-left: 3px solid #D4AF37;
+  padding-left: 0.85em;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0.75em 0;
+}
+
+.rte-content pre {
+  background: #0a1020;
+  border: 1px solid #334155;
+  padding: 0.75em 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.rte-content code {
+  background: rgba(212, 175, 55, 0.1);
+  color: #D4AF37;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'Fira Code', monospace;
+}
+.rte-content pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.rte-content hr {
+  border: 0;
+  border-top: 1px solid #334155;
+  margin: 1em 0;
+}
+
+.rte-content a {
+  color: #D4AF37;
+  text-decoration: underline;
+}
+
+.rte-content img {
+  border-radius: 8px;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5em 0;
+}
+
+.rte-content strong { font-weight: 700; color: #fff; }
+.rte-content em { font-style: italic; }
+.rte-content u { text-decoration: underline; }
+.rte-content s { text-decoration: line-through; }
+
+/* TipTap placeholder text shown when the doc is empty */
+.rte-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #64748b;
+  pointer-events: none;
+  height: 0;
+}

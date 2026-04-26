@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/api_constants.dart';
@@ -218,8 +220,16 @@ class _PostCard extends StatelessWidget {
                     style: const TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                 ],
-                const SizedBox(height: 8),
-                Text(post['content']?.toString() ?? '', style: const TextStyle(fontSize: 13, height: 1.5)),
+                const SizedBox(height: 10),
+                HtmlWidget(
+                  post['content']?.toString() ?? '',
+                  textStyle: const TextStyle(fontSize: 14, height: 1.55),
+                  onTapUrl: (url) async {
+                    final uri = Uri.tryParse(url);
+                    if (uri == null) return false;
+                    return launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                ),
               ],
             ),
           ),

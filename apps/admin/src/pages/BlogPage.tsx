@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { FileText, Pencil, Plus, Trash2, X } from 'lucide-react';
+import RichTextEditor from '../components/RichTextEditor';
 
 interface Post {
   id: string;
@@ -106,7 +107,10 @@ export default function BlogPage() {
                   {p.isPublished ? 'LIVE' : 'DRAFT'}
                 </span>
               </div>
-              <p className="text-xs text-gray-400 line-clamp-3 mb-3">{p.content}</p>
+              <p className="text-xs text-gray-400 line-clamp-3 mb-3">
+                {/* Strip HTML tags for the preview snippet */}
+                {p.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
+              </p>
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>{new Date(p.publishedAt).toLocaleDateString()}</span>
                 <div className="flex gap-2">
@@ -140,8 +144,13 @@ export default function BlogPage() {
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-3 py-2 bg-[#0f172a] border border-[#334155] rounded text-white" />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Content (markdown / plain text)</label>
-                <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} className="w-full px-3 py-2 bg-[#0f172a] border border-[#334155] rounded text-white font-mono text-sm" />
+                <label className="block text-xs text-gray-400 mb-1">Content</label>
+                <RichTextEditor
+                  value={form.content}
+                  onChange={(html) => setForm({ ...form, content: html })}
+                  placeholder="Write your post here…"
+                  minHeight={280}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Image URL (optional)</label>
