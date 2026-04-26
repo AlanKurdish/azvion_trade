@@ -15,6 +15,7 @@ const Map<String, String> en = {
   'logout': 'Logout',
   'logoutConfirm': 'Are you sure you want to logout?',
   'cancel': 'Cancel',
+  'confirm': 'Confirm',
 
   // Dashboard
   'dashboard': 'Dashboard',
@@ -57,6 +58,14 @@ const Map<String, String> en = {
   'noActiveCards': 'No active debit cards',
   'noCardsAvailable': 'No cards available right now',
   'cardBoughtSuccess': 'Card purchased successfully',
+  'cardPrice': 'Card price',
+  'newBalance': 'New balance',
+  'cardActiveFor': 'Active for {hours} hour(s) from purchase',
+  'insufficientBalance': 'Not enough balance to buy this card',
+  'subscribeFor': 'Subscribe for',
+  'monthly': 'monthly',
+  'subscribeConfirm': 'Confirm subscription',
+  'subscribeIntro': 'You will be charged once and get access to all blog posts for 30 days.',
   'blog': 'Blog',
   'blogTitle': 'Latest News',
   'subscribeRequired': 'Subscribe to read blog posts',

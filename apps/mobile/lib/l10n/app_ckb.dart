@@ -15,6 +15,7 @@ const Map<String, String> ckb = {
   'logout': 'چوونە دەرەوە',
   'logoutConfirm': 'دڵنیایت لە چوونە دەرەوە؟',
   'cancel': 'پاشگەزبوونەوە',
+  'confirm': 'پشتڕاستکردنەوە',
 
   // Dashboard
   'dashboard': 'داشبۆرد',
@@ -57,6 +58,14 @@ const Map<String, String> ckb = {
   'noActiveCards': 'هیچ کارتێکی چالاک نییە',
   'noCardsAvailable': 'لە ئێستادا کارت بەردەست نییە',
   'cardBoughtSuccess': 'کارت بە سەرکەوتوویی کڕدرا',
+  'cardPrice': 'نرخی کارت',
+  'newBalance': 'باڵانسی نوێ',
+  'cardActiveFor': 'چالاکە بۆ {hours} کاتژمێر لە دوای کڕین',
+  'insufficientBalance': 'باڵانس بەس نییە بۆ کڕینی ئەم کارتە',
+  'subscribeFor': 'بەشدار بە بە',
+  'monthly': 'مانگانە',
+  'subscribeConfirm': 'پشتڕاستکردنەوەی بەشداری',
+  'subscribeIntro': 'یەک جار لێت دەبڕدرێت و بۆ ٣٠ ڕۆژ دەستت بە هەموو پۆستەکانەوە دەگات.',
   'blog': 'بلۆگ',
   'blogTitle': 'دوایین هەواڵەکان',
   'subscribeRequired': 'بۆ خوێندنەوەی پۆستەکان بەشدار بە',

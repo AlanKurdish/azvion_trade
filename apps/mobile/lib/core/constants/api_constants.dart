@@ -1,5 +1,6 @@
 class ApiConstants {
-  static const String _baseHost = 'http://azne-app.com';
+  // Android emulator: 10.0.2.2 maps to host machine's localhost
+  static const String _baseHost = 'http://10.0.2.2:3000';
 
   static String get host => _baseHost;
   static String get baseUrl => '$_baseHost/api';

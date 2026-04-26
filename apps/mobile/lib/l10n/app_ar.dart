@@ -15,6 +15,7 @@ const Map<String, String> ar = {
   'logout': 'تسجيل الخروج',
   'logoutConfirm': 'هل أنت متأكد من تسجيل الخروج؟',
   'cancel': 'إلغاء',
+  'confirm': 'تأكيد',
 
   // Dashboard
   'dashboard': 'الرئيسية',
@@ -57,6 +58,14 @@ const Map<String, String> ar = {
   'noActiveCards': 'لا توجد بطاقات نشطة',
   'noCardsAvailable': 'لا توجد بطاقات متاحة حاليا',
   'cardBoughtSuccess': 'تم شراء البطاقة بنجاح',
+  'cardPrice': 'سعر البطاقة',
+  'newBalance': 'الرصيد الجديد',
+  'cardActiveFor': 'نشطة لمدة {hours} ساعة من وقت الشراء',
+  'insufficientBalance': 'الرصيد غير كاف لشراء هذه البطاقة',
+  'subscribeFor': 'اشترك بمبلغ',
+  'monthly': 'شهرياً',
+  'subscribeConfirm': 'تأكيد الاشتراك',
+  'subscribeIntro': 'سيتم خصم المبلغ مرة واحدة والحصول على جميع المنشورات لمدة 30 يوماً.',
   'blog': 'المدونة',
   'blogTitle': 'آخر الأخبار',
   'subscribeRequired': 'اشترك لقراءة المنشورات',

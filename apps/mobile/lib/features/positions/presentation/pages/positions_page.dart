@@ -521,7 +521,6 @@ class _HistoryTabState extends State<_HistoryTab> {
                 final deposit = (stats['totalDeposit'] as num?)?.toDouble() ?? 0;
                 final withdraw = (stats['totalWithdrawal'] as num?)?.toDouble() ?? 0;
                 final totalPnl = (stats['totalPnl'] as num?)?.toDouble() ?? 0;
-                final totalComm = (stats['totalCommission'] as num?)?.toDouble() ?? 0;
                 final balance = (stats['balance'] as num?)?.toDouble() ?? 0;
                 final closedCount = (stats['closedTradesCount'] as num?)?.toInt() ?? 0;
 
@@ -581,24 +580,14 @@ class _HistoryTabState extends State<_HistoryTab> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _StatCard(
-                                icon: Icons.trending_up,
-                                iconColor: totalPnl >= 0 ? Colors.green : Colors.red,
-                                label: t.tr('totalPnl'),
-                                value: '${totalPnl >= 0 ? '+' : ''}\$${totalPnl.toStringAsFixed(2)}',
-                                valueColor: totalPnl >= 0 ? Colors.green : Colors.red,
-                              ),
-                              const SizedBox(width: 8),
-                              _StatCard(
-                                icon: Icons.receipt_long,
-                                iconColor: const Color(0xFFD4AF37),
-                                label: t.tr('totalCommission'),
-                                value: '\$${totalComm.toStringAsFixed(2)}',
-                                valueColor: const Color(0xFFD4AF37),
-                              ),
-                            ],
+                          // Full-width Total P/L card (commission hidden)
+                          _StatCard(
+                            icon: Icons.trending_up,
+                            iconColor: totalPnl >= 0 ? Colors.green : Colors.red,
+                            label: t.tr('totalPnl'),
+                            value: '${totalPnl >= 0 ? '+' : ''}\$${totalPnl.toStringAsFixed(2)}',
+                            valueColor: totalPnl >= 0 ? Colors.green : Colors.red,
+                            fullWidth: true,
                           ),
                           const SizedBox(height: 12),
                           if (state.trades.isEmpty)
@@ -686,6 +675,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
+  final bool fullWidth;
 
   const _StatCard({
     required this.icon,
@@ -693,52 +683,55 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueColor,
+    this.fullWidth = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1e293b) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 16, color: iconColor),
+    final card = Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1e293b) : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      fontFamily: 'monospace',
-                      color: valueColor ?? Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: fullWidth ? 18 : 13,
+                    fontFamily: 'monospace',
+                    color: valueColor ?? Colors.white,
                   ),
-                ],
-              ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+    // Inside a Row, _StatCard expects to be Expanded; standalone, wrap in
+    // SizedBox(width: double.infinity) is enough.
+    return fullWidth ? card : Expanded(child: card);
   }
 }

@@ -34,14 +34,14 @@ export class DebitCardsController {
   @Get('mine')
   @UseGuards(JwtAuthGuard)
   mine(@Req() req: any) {
-    return this.service.findActiveForUser(req.user.userId);
+    return this.service.findActiveForUser(req.user.id);
   }
 
   // ── Buy a card ──────────────────────────────────────────────────
   @Post(':id/buy')
   @UseGuards(JwtAuthGuard)
   buy(@Param('id') id: string, @Req() req: any) {
-    return this.service.buyCard(req.user.userId, id);
+    return this.service.buyCard(req.user.id, id);
   }
 
   // ── Admin: list all cards including inactive ────────────────────

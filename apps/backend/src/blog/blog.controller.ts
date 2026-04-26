@@ -49,7 +49,7 @@ export class BlogController {
   @Get()
   @UseGuards(JwtAuthGuard)
   list(@Req() req: any) {
-    return this.service.listForUser(req.user.userId);
+    return this.service.listForUser(req.user.id);
   }
 
   // Admin: list every post

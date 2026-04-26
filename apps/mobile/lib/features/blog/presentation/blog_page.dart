@@ -19,6 +19,7 @@ class _BlogPageState extends State<BlogPage> {
   bool _subscribed = false;
   DateTime? _expiresAt;
   double _price = 0;
+  double _balance = 0;
   List<dynamic> _posts = [];
   bool _buying = false;
   Timer? _ticker;
@@ -47,6 +48,11 @@ class _BlogPageState extends State<BlogPage> {
           ? DateTime.tryParse(status.data['expiresAt'].toString())
           : null;
       _price = double.tryParse((status.data['price'] ?? 0).toString()) ?? 0;
+      // Load balance for the subscribe-confirmation modal
+      try {
+        final bal = await _api.dio.get(ApiConstants.balance);
+        _balance = double.tryParse((bal.data['amount'] ?? 0).toString()) ?? 0;
+      } catch (_) {}
       if (_subscribed) {
         try {
           final posts = await _api.dio.get(ApiConstants.blog);
@@ -64,7 +70,137 @@ class _BlogPageState extends State<BlogPage> {
     }
   }
 
+  /// Confirmation modal before subscribing
+  Future<bool> _showSubscribeModal() async {
+    final t = AppLocalizations.of(context);
+    final newBalance = _balance - _price;
+    final notEnough = _balance < _price;
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).cardTheme.color,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + MediaQuery.of(ctx).viewPadding.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 16),
+              const Icon(Icons.article, size: 44, color: Color(0xFFD4AF37)),
+              const SizedBox(height: 10),
+              Text(
+                t.tr('subscribeConfirm'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                t.tr('subscribeIntro'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 18),
+              _row(t.tr('balance'), '\$${_balance.toStringAsFixed(2)}'),
+              _row('${t.tr('subscribeFor')} (${t.tr('monthly')})', '-\$${_price.toStringAsFixed(2)}', valueColor: Colors.red),
+              const Divider(height: 24),
+              _row(t.tr('newBalance'), '\$${newBalance.toStringAsFixed(2)}', valueColor: const Color(0xFFD4AF37), bold: true),
+              if (notEnough) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber, color: Colors.red, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          t.tr('insufficientBalance'),
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: Colors.grey[600]!),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(t.tr('cancel')),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: notEnough ? null : () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4AF37),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        disabledBackgroundColor: Colors.grey[800],
+                      ),
+                      child: Text(
+                        '${t.tr('confirm')} • \$${_price.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return confirmed == true;
+  }
+
+  Widget _row(String label, String value, {Color? valueColor, bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.w600,
+              fontSize: bold ? 17 : 14,
+              color: valueColor,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _subscribe() async {
+    final confirmed = await _showSubscribeModal();
+    if (!confirmed) return;
     setState(() => _buying = true);
     try {
       await _api.dio.post(ApiConstants.subscriptionBuy);

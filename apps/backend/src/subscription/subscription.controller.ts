@@ -9,11 +9,11 @@ export class SubscriptionController {
 
   @Get('status')
   status(@Req() req: any) {
-    return this.service.getStatus(req.user.userId);
+    return this.service.getStatus(req.user.id);
   }
 
   @Post('buy')
   buy(@Req() req: any) {
-    return this.service.buy(req.user.userId);
+    return this.service.buy(req.user.id);
   }
 }
