@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { CreditCard, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { CreditCard, Pencil, Plus, Trash2, X, Lock } from 'lucide-react';
 
 interface DebitCardRow {
   id: string;
@@ -11,6 +11,7 @@ interface DebitCardRow {
   price: string;
   durationHours: number;
   isActive: boolean;
+  _count?: { purchases: number };
 }
 
 const empty = {
@@ -106,6 +107,15 @@ export default function DebitCardsPage() {
     }
   };
 
+  const toggleActive = async (card: DebitCardRow) => {
+    try {
+      await api.patch(`/debit-cards/${card.id}`, { isActive: !card.isActive });
+      load();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update');
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -132,32 +142,55 @@ export default function DebitCardsPage() {
               <th className="text-left px-6 py-3 text-sm text-gray-400">%</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">Price</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">Duration</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Active</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">Purchases</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">Status</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {cards.map((c) => (
-              <tr key={c.id} className="border-b border-[#334155]/50 hover:bg-white/5">
-                <td className="px-6 py-3 font-semibold">{c.nameEn}</td>
-                <td className="px-6 py-3 text-gray-300">{c.nameAr}</td>
-                <td className="px-6 py-3 text-gray-300">{c.nameCkb}</td>
-                <td className="px-6 py-3 text-[#D4AF37] font-semibold">{Number(c.percentage)}%</td>
-                <td className="px-6 py-3 text-green-400">${Number(c.price).toFixed(2)}</td>
-                <td className="px-6 py-3 text-gray-300">{c.durationHours}h</td>
-                <td className="px-6 py-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${c.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                    {c.isActive ? 'Active' : 'Hidden'}
-                  </span>
-                </td>
-                <td className="px-6 py-3 flex gap-3">
-                  <button onClick={() => openEdit(c)} className="text-[#D4AF37] hover:underline"><Pencil size={16} /></button>
-                  <button onClick={() => handleDelete(c)} className="text-red-400"><Trash2 size={16} /></button>
-                </td>
-              </tr>
-            ))}
+            {cards.map((c) => {
+              const purchases = c._count?.purchases ?? 0;
+              const hasPurchases = purchases > 0;
+              return (
+                <tr key={c.id} className="border-b border-[#334155]/50 hover:bg-white/5">
+                  <td className="px-6 py-3 font-semibold">{c.nameEn}</td>
+                  <td className="px-6 py-3 text-gray-300">{c.nameAr}</td>
+                  <td className="px-6 py-3 text-gray-300">{c.nameCkb}</td>
+                  <td className="px-6 py-3 text-[#D4AF37] font-semibold">{Number(c.percentage)}%</td>
+                  <td className="px-6 py-3 text-green-400">${Number(c.price).toFixed(2)}</td>
+                  <td className="px-6 py-3 text-gray-300">{c.durationHours}h</td>
+                  <td className="px-6 py-3 text-gray-300">{purchases}</td>
+                  <td className="px-6 py-3">
+                    {/* One-click status toggle */}
+                    <button
+                      onClick={() => toggleActive(c)}
+                      title={c.isActive ? 'Click to disable (hide from app)' : 'Click to enable'}
+                      className={`w-10 h-5 rounded-full transition-colors ${c.isActive ? 'bg-green-500' : 'bg-gray-600'}`}
+                    >
+                      <span className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${c.isActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => openEdit(c)} className="text-[#D4AF37] hover:underline" title="Edit"><Pencil size={16} /></button>
+                      {hasPurchases ? (
+                        <button
+                          disabled
+                          title={`Cannot delete — ${purchases} purchase(s) on record. Disable instead.`}
+                          className="text-gray-600 cursor-not-allowed"
+                        >
+                          <Lock size={16} />
+                        </button>
+                      ) : (
+                        <button onClick={() => handleDelete(c)} className="text-red-400" title="Delete"><Trash2 size={16} /></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {cards.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No cards yet — click "New card" to add one.</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No cards yet — click "New card" to add one.</td></tr>
             )}
           </tbody>
         </table>

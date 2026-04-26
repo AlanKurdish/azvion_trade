@@ -22,13 +22,17 @@ export class DebitCardsService {
   }
 
   async findAllCards(includeInactive = false) {
-    return this.prisma.debitCard.findMany({
+    const cards = await this.prisma.debitCard.findMany({
       where: {
         isDeleted: false,
         ...(includeInactive ? {} : { isActive: true }),
       },
       orderBy: { price: 'asc' },
+      // For the admin view, surface how many times the card has been bought
+      // so the UI can prevent deletion of cards with history.
+      include: includeInactive ? { _count: { select: { purchases: true } } } : undefined,
     });
+    return cards;
   }
 
   async updateCard(id: string, dto: UpdateDebitCardDto) {
@@ -37,9 +41,24 @@ export class DebitCardsService {
     return this.prisma.debitCard.update({ where: { id }, data: dto });
   }
 
+  /**
+   * Hard-delete a card template. Refuses if any user has ever purchased it,
+   * since the UserDebitCard rows hold a foreign key to this row and we want
+   * to preserve transaction history. Admins should disable the card instead.
+   */
   async removeCard(id: string) {
-    const card = await this.prisma.debitCard.findUnique({ where: { id } });
+    const card = await this.prisma.debitCard.findUnique({
+      where: { id },
+      include: { _count: { select: { purchases: true } } },
+    });
     if (!card || card.isDeleted) throw new NotFoundException('Card not found');
+
+    if (card._count.purchases > 0) {
+      throw new BadRequestException(
+        `Cannot delete this card: ${card._count.purchases} user(s) have purchased it. Disable it instead so it stops appearing to new buyers.`,
+      );
+    }
+
     await this.prisma.debitCard.update({
       where: { id },
       data: { isDeleted: true, isActive: false },
