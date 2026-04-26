@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../bloc/trade_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/app_router.dart';
@@ -38,10 +39,30 @@ class _TradeDetailView extends StatelessWidget {
     return price.toStringAsFixed(5);
   }
 
+  /// Pick the per-role commission, falling back to legacy `commission`.
+  Future<double> _resolveCommission() async {
+    const storage = FlutterSecureStorage();
+    final role = (await storage.read(key: 'user_role')) ?? 'USER';
+    final fromRole = role == 'SHOP'
+        ? double.tryParse((symbol['commissionShop'] ?? 0).toString()) ?? 0
+        : double.tryParse((symbol['commissionUser'] ?? 0).toString()) ?? 0;
+    if (fromRole > 0) return fromRole;
+    return double.tryParse((symbol['commission'] ?? 0).toString()) ?? 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mtSymbol = symbol['mtSymbol']?.toString() ?? '';
-    final commission = double.tryParse(symbol['commission'].toString()) ?? 0;
+    return FutureBuilder<double>(
+      future: _resolveCommission(),
+      builder: (context, snapshot) {
+        final commission = snapshot.data ?? 0;
+        return _buildBody(context, mtSymbol, commission);
+      },
+    );
+  }
+
+  Widget _buildBody(BuildContext context, String mtSymbol, double commission) {
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -168,13 +189,11 @@ class _TradeDetailView extends StatelessWidget {
                             padding: const EdgeInsets.all(16),
                             child: Column(
                               children: [
-                                _infoRow(AppLocalizations.of(context).tr('price'),
-                                    liveFormulaPrice != null ? '\$${formatPrice(livePrice)}' : '...'),
-                                _infoRow(AppLocalizations.of(context).tr('commission'), '\$${commission.toStringAsFixed(2)}'),
-                                const Divider(),
-                                _infoRow(AppLocalizations.of(context).tr('totalCost'),
-                                    liveFormulaPrice != null ? '\$${liveTotalCost.toStringAsFixed(2)}' : '...',
-                                    valueStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontSize: 16)),
+                                _infoRow(
+                                  AppLocalizations.of(context).tr('buyPrice'),
+                                  liveFormulaPrice != null ? '\$${liveTotalCost.toStringAsFixed(2)}' : '...',
+                                  valueStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4AF37), fontSize: 18),
+                                ),
                               ],
                             ),
                           ),

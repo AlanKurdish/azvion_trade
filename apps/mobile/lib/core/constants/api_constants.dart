@@ -37,4 +37,16 @@ class ApiConstants {
 
   // Slideshow
   static const String slideshow = '/slideshow';
+
+  // Debit cards
+  static const String debitCards = '/debit-cards';
+  static const String myDebitCards = '/debit-cards/mine';
+  static String buyDebitCard(String id) => '/debit-cards/$id/buy';
+
+  // Subscription
+  static const String subscriptionStatus = '/subscription/status';
+  static const String subscriptionBuy = '/subscription/buy';
+
+  // Blog
+  static const String blog = '/blog';
 }

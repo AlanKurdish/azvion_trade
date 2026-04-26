@@ -9,6 +9,9 @@
     "symbols": "Symbols",
     "categories": "Categories",
     "slideshow": "Slideshow",
+    "debitCards": "Debit Cards",
+    "activeDebits": "Active Debits",
+    "blog": "Blog",
     "settings": "Settings",
     "history": "Trade History",
     "logout": "Logout"

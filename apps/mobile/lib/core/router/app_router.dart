@@ -6,6 +6,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/trade/presentation/pages/symbols_page.dart';
 import '../../features/positions/presentation/pages/positions_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/blog/presentation/blog_page.dart';
 import '../../l10n/app_localizations.dart';
 
 // Global key to control tab switching from anywhere
@@ -93,16 +94,19 @@ class MainShellState extends State<MainShell> {
           DashboardPage(key: ValueKey('dash_$_dashboardRefresh')),
           const SymbolsPage(),
           PositionsPage(key: ValueKey('pos_$_positionsRefresh')),
+          const BlogPage(),
           ProfilePage(key: ValueKey('prof_$_profileRefresh')),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: [
           BottomNavigationBarItem(icon: const Icon(Icons.dashboard), label: AppLocalizations.of(context).tr('navDashboard')),
           BottomNavigationBarItem(icon: const Icon(Icons.candlestick_chart), label: AppLocalizations.of(context).tr('navTrade')),
           BottomNavigationBarItem(icon: const Icon(Icons.receipt_long), label: AppLocalizations.of(context).tr('navPositions')),
+          BottomNavigationBarItem(icon: const Icon(Icons.article), label: AppLocalizations.of(context).tr('navBlog')),
           BottomNavigationBarItem(icon: const Icon(Icons.person), label: AppLocalizations.of(context).tr('navProfile')),
         ],
       ),

@@ -21,7 +21,7 @@ export default function UserDetailPage() {
 
   // Edit mode
   const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', isActive: true });
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', isActive: true, role: 'USER' as 'USER' | 'SHOP' | 'ADMIN' });
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +51,7 @@ export default function UserDetailPage() {
         lastName: data.lastName || '',
         phone: data.phone || '',
         isActive: data.isActive,
+        role: data.role || 'USER',
       });
     } catch {
       navigate('/dashboard/users');
@@ -94,6 +95,7 @@ export default function UserDetailPage() {
         lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim(),
         isActive: editForm.isActive,
+        role: editForm.role,
       });
       await loadUser();
       setEditing(false);
@@ -214,6 +216,10 @@ export default function UserDetailPage() {
                 <span>{user.lastName || '-'}</span>
               </div>
               <div>
+                <span className="text-gray-400 block text-xs">Role</span>
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${user.role === 'SHOP' ? 'bg-purple-500/20 text-purple-400' : user.role === 'ADMIN' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>{user.role || 'USER'}</span>
+              </div>
+              <div>
                 <span className="text-gray-400 block text-xs">{t('userDetail.status')}</span>
                 <span>{user.isActive ? t('userDetail.active') : t('userDetail.inactive')}</span>
               </div>
@@ -251,6 +257,19 @@ export default function UserDetailPage() {
                   className={`w-full mt-1 px-3 py-2 bg-[#0f172a] border rounded text-sm text-white ${editErrors.lastName ? 'border-red-500' : 'border-[#334155]'}`}
                 />
                 {editErrors.lastName && <p className="text-red-400 text-xs mt-1">{editErrors.lastName}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-gray-400">Role</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+                  className="w-full mt-1 px-3 py-2 bg-[#0f172a] border border-[#334155] rounded text-sm text-white"
+                >
+                  <option value="USER">USER</option>
+                  <option value="SHOP">SHOP</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+                <p className="text-[10px] text-gray-500 mt-1">SHOP users get the shop commission rate on every trade</p>
               </div>
               <div>
                 <label className="text-xs text-gray-400">{t('userDetail.status')}</label>

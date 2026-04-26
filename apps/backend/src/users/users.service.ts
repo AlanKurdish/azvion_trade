@@ -48,9 +48,11 @@ export class UsersService {
 
   async findAll(page = 1, limit = 20) {
     const skip = (page - 1) * limit;
+    // List USER and SHOP accounts (exclude ADMIN from this listing)
+    const where = { role: { in: ['USER', 'SHOP'] as Array<'USER' | 'SHOP'> } };
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
-        where: { role: 'USER' },
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -59,12 +61,13 @@ export class UsersService {
           phone: true,
           firstName: true,
           lastName: true,
+          role: true,
           isActive: true,
           createdAt: true,
           balance: { select: { amount: true } },
         },
       }),
-      this.prisma.user.count({ where: { role: 'USER' } }),
+      this.prisma.user.count({ where }),
     ]);
 
     return { users, total, page, limit };

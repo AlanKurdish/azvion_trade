@@ -11,6 +11,9 @@ import SettingsPage from './pages/SettingsPage';
 import TradeHistoryPage from './pages/TradeHistoryPage';
 import SlideshowPage from './pages/SlideshowPage';
 import CategoriesPage from './pages/CategoriesPage';
+import DebitCardsPage from './pages/DebitCardsPage';
+import ActiveDebitsPage from './pages/ActiveDebitsPage';
+import BlogPage from './pages/BlogPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -40,6 +43,9 @@ export default function App() {
           <Route path="symbols" element={<SymbolsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="slideshow" element={<SlideshowPage />} />
+          <Route path="debit-cards" element={<DebitCardsPage />} />
+          <Route path="active-debits" element={<ActiveDebitsPage />} />
+          <Route path="blog" element={<BlogPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

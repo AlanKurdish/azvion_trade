@@ -37,6 +37,15 @@ export class SettingsController {
     return { demoMode: enabled };
   }
 
+  /** Generic getter for any setting key (admin-only, used by control panel) */
+  @Get(':key')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getSetting(@Param('key') key: string) {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key } });
+    return { value: setting?.value ?? '' };
+  }
+
   @Put(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)

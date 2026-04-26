@@ -41,6 +41,16 @@ export class CreateSymbolDto {
   @IsOptional()
   commission?: number;
 
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  commissionUser?: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  commissionShop?: number;
+
   @IsBoolean()
   @IsOptional()
   isTradable?: boolean;

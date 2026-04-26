@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [demoSaving, setDemoSaving] = useState(false);
+  const [subPrice, setSubPrice] = useState('0');
+  const [subSaved, setSubSaved] = useState(false);
 
   const loadStatus = () => {
     api.get('/mt/status').then(({ data }) => setMtStatus(data)).catch(() => {});
@@ -21,7 +23,16 @@ export default function SettingsPage() {
     loadStatus();
     api.get('/settings/privacy-policy').then(({ data }) => setPrivacyPolicy(data.value));
     api.get('/settings/demo-mode').then(({ data }) => setDemoMode(!!data.demoMode)).catch(() => {});
+    api.get('/settings/subscription_price').then(({ data }) => setSubPrice(data.value || '0')).catch(() => {});
   }, []);
+
+  const saveSubPrice = async () => {
+    const v = parseFloat(subPrice);
+    if (!isFinite(v) || v < 0) return;
+    await api.put('/settings/subscription_price', { value: String(v) });
+    setSubSaved(true);
+    setTimeout(() => setSubSaved(false), 2000);
+  };
 
   const toggleDemoMode = async () => {
     const next = !demoMode;
@@ -188,6 +199,30 @@ export default function SettingsPage() {
             {t('settings.demoModeActive')}
           </div>
         )}
+      </div>
+
+      {/* Blog subscription price */}
+      <div className="bg-[#1e293b] p-6 rounded-xl border border-[#334155]">
+        <h3 className="text-lg font-semibold mb-1">Blog Subscription Price</h3>
+        <p className="text-sm text-gray-400 mb-3">
+          Monthly fee users pay to read blog posts in the app. Set to 0 to disable subscriptions.
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={subPrice}
+              onChange={(e) => setSubPrice(e.target.value)}
+              className="w-full pl-8 pr-4 py-2.5 bg-[#0f172a] border border-[#334155] rounded-lg text-white"
+            />
+          </div>
+          <span className="text-gray-400 text-sm">/ month</span>
+          <button onClick={saveSubPrice} className="px-6 py-2.5 bg-[#D4AF37] text-black rounded-lg font-semibold">{t('settings.save')}</button>
+          {subSaved && <span className="text-green-400 text-sm">{t('settings.saved')}</span>}
+        </div>
       </div>
 
       <div className="bg-[#1e293b] p-6 rounded-xl border border-[#334155]">

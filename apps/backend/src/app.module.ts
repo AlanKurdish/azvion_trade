@@ -12,6 +12,9 @@ import { WebsocketModule } from './websocket/websocket.module';
 import { SettingsModule } from './settings/settings.module';
 import { SlideshowModule } from './slideshow/slideshow.module';
 import { CategoriesModule } from './categories/categories.module';
+import { DebitCardsModule } from './debit-cards/debit-cards.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { BlogModule } from './blog/blog.module';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { CategoriesModule } from './categories/categories.module';
     SettingsModule,
     SlideshowModule,
     CategoriesModule,
+    DebitCardsModule,
+    SubscriptionModule,
+    BlogModule,
   ],
 })
 export class AppModule {}

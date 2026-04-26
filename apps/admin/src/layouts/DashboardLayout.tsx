@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth-store';
-import { LayoutDashboard, Users, TrendingUp, Settings, LogOut, BarChart3, Globe, History, Image, Layers } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Settings, LogOut, BarChart3, Globe, History, Image, Layers, CreditCard, Activity, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, isRtl } from '../i18n';
 import { useEffect, useState, useRef } from 'react';
@@ -14,6 +14,9 @@ const navKeys = [
   { to: '/dashboard/symbols', icon: BarChart3, key: 'symbols' },
   { to: '/dashboard/categories', icon: Layers, key: 'categories' },
   { to: '/dashboard/slideshow', icon: Image, key: 'slideshow' },
+  { to: '/dashboard/debit-cards', icon: CreditCard, key: 'debitCards' },
+  { to: '/dashboard/active-debits', icon: Activity, key: 'activeDebits' },
+  { to: '/dashboard/blog', icon: FileText, key: 'blog' },
   { to: '/dashboard/settings', icon: Settings, key: 'settings' },
 ];
 

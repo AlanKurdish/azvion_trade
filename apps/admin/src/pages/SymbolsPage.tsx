@@ -16,7 +16,8 @@ export default function SymbolsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
     name: '', displayName: '', mtSymbol: '',
-    lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false,
+    lotSize: '', amount: '', amountLabel: '', formula: '', commission: '',
+    commissionUser: '', commissionShop: '', isTradable: false,
     isReadOnly: false, categoryId: '' as string,
   });
   const [categories, setCategories] = useState<Array<{ id: string; nameEn: string; nameAr: string; nameCkb: string }>>([]);
@@ -72,6 +73,8 @@ export default function SymbolsPage() {
       amountLabel: '',
       formula: '',
       commission: '0',
+      commissionUser: '0',
+      commissionShop: '0',
       isTradable: false,
       isReadOnly: false,
       categoryId: '',
@@ -88,6 +91,8 @@ export default function SymbolsPage() {
       lotSize: parseFloat(form.lotSize),
       amount: parseFloat(form.amount),
       commission: parseFloat(form.commission || '0'),
+      commissionUser: parseFloat(form.commissionUser || '0'),
+      commissionShop: parseFloat(form.commissionShop || '0'),
       categoryId: form.categoryId || null,
     };
     if (!payload.amountLabel) delete payload.amountLabel;
@@ -101,7 +106,7 @@ export default function SymbolsPage() {
     }
     setShowForm(false);
     setEditing(null);
-    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false, isReadOnly: false, categoryId: '' });
+    setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', commissionUser: '', commissionShop: '', isTradable: false, isReadOnly: false, categoryId: '' });
     loadSymbols();
   };
 
@@ -110,7 +115,10 @@ export default function SymbolsPage() {
     setForm({
       name: sym.name, displayName: sym.displayName, mtSymbol: sym.mtSymbol,
       lotSize: String(sym.lotSize), amount: String(sym.amount), amountLabel: sym.amountLabel || '',
-      formula: sym.formula || '', commission: String(sym.commission), isTradable: sym.isTradable,
+      formula: sym.formula || '', commission: String(sym.commission),
+      commissionUser: String(sym.commissionUser ?? '0'),
+      commissionShop: String(sym.commissionShop ?? '0'),
+      isTradable: sym.isTradable,
       isReadOnly: !!sym.isReadOnly, categoryId: sym.categoryId || '',
     });
     setShowForm(true);
@@ -148,7 +156,7 @@ export default function SymbolsPage() {
           <button onClick={openAddFromMt} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
             <Download size={18} /> {t('symbols.importMt5')}
           </button>
-          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', isTradable: false, isReadOnly: false, categoryId: '' }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
+          <button onClick={() => { setEditing(null); setForm({ name: '', displayName: '', mtSymbol: '', lotSize: '', amount: '', amountLabel: '', formula: '', commission: '', commissionUser: '', commissionShop: '', isTradable: false, isReadOnly: false, categoryId: '' }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold">
             <Plus size={18} /> {t('symbols.addManual')}
           </button>
         </div>
@@ -163,7 +171,8 @@ export default function SymbolsPage() {
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.lotSize')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.amount')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.formula')}</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.commission')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">User Comm.</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">Shop Comm.</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.category')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.tradable')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.readOnly')}</th>
@@ -178,7 +187,8 @@ export default function SymbolsPage() {
                 <td className="px-6 py-3">{sym.lotSize}</td>
                 <td className="px-6 py-3">{sym.amount}{sym.amountLabel && <span className="text-gray-400 text-xs ms-1">({sym.amountLabel})</span>}</td>
                 <td className="px-6 py-3 text-gray-400 text-sm font-mono">{sym.formula || '—'}</td>
-                <td className="px-6 py-3">${sym.commission}</td>
+                <td className="px-6 py-3 text-blue-400">${Number(sym.commissionUser ?? sym.commission ?? 0).toFixed(2)}</td>
+                <td className="px-6 py-3 text-purple-400">${Number(sym.commissionShop ?? sym.commission ?? 0).toFixed(2)}</td>
                 <td className="px-6 py-3 text-gray-400 text-sm">
                   {sym.category ? sym.category.nameEn : <span className="text-gray-600">—</span>}
                 </td>
@@ -205,7 +215,7 @@ export default function SymbolsPage() {
               </tr>
             ))}
             {symbols.length === 0 && (
-              <tr><td colSpan={10} className="text-center py-8 text-gray-400">{t('symbols.noSymbols')}</td></tr>
+              <tr><td colSpan={11} className="text-center py-8 text-gray-400">{t('symbols.noSymbols')}</td></tr>
             )}
           </tbody>
         </table>
@@ -307,7 +317,18 @@ export default function SymbolsPage() {
               <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={t('symbols.amountPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" required />
               <input value={form.amountLabel} onChange={(e) => setForm({ ...form, amountLabel: e.target.value })} placeholder={t('symbols.amountLabelPlaceholder')} className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
               <input value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} placeholder={t('symbols.formulaPlaceholder')} className="col-span-2 px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white font-mono" />
-              <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={t('symbols.commissionPlaceholder')} type="number" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white" />
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-blue-400 mb-1">User Commission ($)</label>
+                  <input value={form.commissionUser} onChange={(e) => setForm({ ...form, commissionUser: e.target.value })} placeholder="e.g. 25" type="number" step="0.01" className="w-full px-3 py-2 bg-[#0f172a] border border-blue-500/30 rounded-lg text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-purple-400 mb-1">Shop Commission ($)</label>
+                  <input value={form.commissionShop} onChange={(e) => setForm({ ...form, commissionShop: e.target.value })} placeholder="e.g. 15" type="number" step="0.01" className="w-full px-3 py-2 bg-[#0f172a] border border-purple-500/30 rounded-lg text-white" />
+                </div>
+                <p className="col-span-2 text-[10px] text-gray-500 -mt-2">Per-role commissions. The legacy field below is kept as a fallback when both are 0.</p>
+              </div>
+              <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={`Legacy fallback ${t('symbols.commissionPlaceholder')}`} type="number" step="0.01" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white text-sm" />
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value })}

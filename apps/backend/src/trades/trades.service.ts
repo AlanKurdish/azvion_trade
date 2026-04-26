@@ -35,12 +35,27 @@ export class TradesService {
     }
   }
 
+  /**
+   * Pick the right commission for a user based on their role.
+   * Falls back to legacy `commission` if both per-role values are zero.
+   */
+  private commissionFor(symbol: { commission: any; commissionUser: any; commissionShop: any }, role: string): number {
+    if (role === 'SHOP') {
+      const v = Number(symbol.commissionShop);
+      if (v > 0) return v;
+    } else {
+      const v = Number(symbol.commissionUser);
+      if (v > 0) return v;
+    }
+    return Number(symbol.commission);
+  }
+
   async openTrade(userId: string, symbolId: string) {
     const [symbol, user] = await Promise.all([
       this.prisma.symbol.findUnique({ where: { id: symbolId } }),
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { firstName: true, lastName: true, phone: true },
+        select: { firstName: true, lastName: true, phone: true, role: true },
       }),
     ]);
 
@@ -86,7 +101,12 @@ export class TradesService {
       formulaPrice = liveAsk;
     }
 
-    const totalCost = formulaPrice + Number(symbol.commission);
+    // Role-based commission: commission is folded INTO the customer price
+    // so the user sees a single "buy with $X" number that already includes it.
+    const effectiveCommission = this.commissionFor(symbol, user?.role ?? 'USER');
+    const customerBuyPrice = formulaPrice + effectiveCommission; // what the user is charged
+    const totalCost = customerBuyPrice; // single line on their balance
+
     if (Number(balance.amount) < totalCost) {
       throw new BadRequestException(
         `Insufficient balance. Required: $${totalCost.toFixed(2)}, Available: $${Number(balance.amount).toFixed(2)}`,
@@ -134,8 +154,8 @@ export class TradesService {
       });
 
       // Create trade record
-      // openPrice = MT5 market price; customerPrice = formula result (what was deducted)
-      // openBid/openAsk = raw market prices at time of purchase
+      // customerPrice = the *full* amount the user paid (formula price + commission).
+      // commission is stored separately so we can subtract it again on close.
       const newTrade = await tx.trade.create({
         data: {
           userId,
@@ -145,8 +165,8 @@ export class TradesService {
           openPrice: mtOpenPrice ?? liveAsk,
           openBid: liveBid,
           openAsk: liveAsk,
-          customerPrice: formulaPrice,
-          commission: symbol.commission,
+          customerPrice: customerBuyPrice,
+          commission: effectiveCommission,
           mtOrderId,
         },
         include: {
@@ -154,28 +174,15 @@ export class TradesService {
         },
       });
 
-      // Record transactions with tradeId link
-      await tx.transaction.createMany({
-        data: [
-          {
-            userId,
-            type: 'TRADE_OPEN',
-            amount: new Prisma.Decimal(-formulaPrice),
-            tradeId: newTrade.id,
-            note: `Buy ${symbol.displayName} @ $${formulaPrice.toFixed(2)}`,
-          },
-          ...(Number(symbol.commission) > 0
-            ? [
-                {
-                  userId,
-                  type: 'COMMISSION' as const,
-                  amount: new Prisma.Decimal(-Number(symbol.commission)),
-                  tradeId: newTrade.id,
-                  note: `Commission for ${symbol.displayName}`,
-                },
-              ]
-            : []),
-        ],
+      // Single transaction line — user only ever sees one debit, no commission row.
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: 'TRADE_OPEN',
+          amount: new Prisma.Decimal(-customerBuyPrice),
+          tradeId: newTrade.id,
+          note: `Buy ${symbol.displayName} @ $${customerBuyPrice.toFixed(2)}`,
+        },
       });
 
       return newTrade;
@@ -251,9 +258,11 @@ export class TradesService {
         },
       });
 
-      // Credit balance: the exact customer price deducted on open + MT5 profit/loss
+      // Credit balance: customerPrice (which already included commission on open)
+      // + P/L − commission. Net effect: user gains/loses (P/L − commission).
       const deductedPrice = Number(trade.customerPrice);
-      const creditAmount = deductedPrice + profitLoss;
+      const commissionPaid = Number(trade.commission);
+      const creditAmount = deductedPrice + profitLoss - commissionPaid;
       await tx.balance.update({
         where: { userId },
         data: { amount: { increment: creditAmount } },
@@ -265,7 +274,7 @@ export class TradesService {
           type: 'TRADE_CLOSE',
           amount: new Prisma.Decimal(creditAmount),
           tradeId,
-          note: `Close ${trade.symbol.displayName} | Returned: $${deductedPrice} | P/L: ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}`,
+          note: `Close ${trade.symbol.displayName} | P/L: ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}`,
         },
       });
 
@@ -450,9 +459,10 @@ export class TradesService {
         },
       });
 
-      // Credit balance: the exact customer price deducted on open + MT5 profit/loss
+      // Credit balance: customerPrice (already includes commission) + P/L − commission
       const deductedPrice = Number(trade.customerPrice);
-      const creditAmount = deductedPrice + profitLoss;
+      const commissionPaid = Number(trade.commission);
+      const creditAmount = deductedPrice + profitLoss - commissionPaid;
       await tx.balance.update({
         where: { userId: trade.userId },
         data: { amount: { increment: creditAmount } },
@@ -464,7 +474,7 @@ export class TradesService {
           type: 'TRADE_CLOSE',
           amount: new Prisma.Decimal(creditAmount),
           tradeId,
-          note: `Close ${trade.symbol.displayName} | Returned: $${deductedPrice} | P/L: ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}`,
+          note: `Close ${trade.symbol.displayName} | P/L: ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}`,
         },
       });
 

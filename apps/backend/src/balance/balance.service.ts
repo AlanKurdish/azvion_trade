@@ -10,7 +10,25 @@ export class BalanceService {
       where: { userId },
     });
     if (!balance) throw new NotFoundException('Balance not found');
-    return balance;
+
+    // Add the snapshotted bonus from any currently-active debit cards.
+    const now = new Date();
+    const activeCards = await this.prisma.userDebitCard.findMany({
+      where: { userId, expiresAt: { gt: now } },
+      select: { bonusAmount: true },
+    });
+    const bonusTotal = activeCards.reduce(
+      (sum, c) => sum + Number(c.bonusAmount),
+      0,
+    );
+
+    return {
+      ...balance,
+      // Live balance the Flutter app should display
+      effectiveAmount: Number(balance.amount) + bonusTotal,
+      bonusAmount: bonusTotal,
+      activeCardsCount: activeCards.length,
+    };
   }
 
   async getAllBalances() {

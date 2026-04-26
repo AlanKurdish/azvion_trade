@@ -8,6 +8,7 @@ import '../../../../core/network/websocket_client.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../debit_cards/presentation/debit_cards_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -31,6 +32,10 @@ class _DashboardPageState extends State<DashboardPage> {
   final PageController _pageController = PageController();
   Timer? _autoSlideTimer;
 
+  // Active debit cards
+  List<Map<String, dynamic>> _activeCards = [];
+  Timer? _cardsTimer;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +52,22 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     });
     _loadSlides();
+    _loadCards();
+    // Re-render every 30 s so the countdown stays roughly accurate.
+    _cardsTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  Future<void> _loadCards() async {
+    try {
+      final res = await _apiClient.dio.get(ApiConstants.myDebitCards);
+      if (mounted) {
+        setState(() => _activeCards = (res.data as List).cast<Map<String, dynamic>>());
+      }
+    } catch (_) {
+      // Older backend or no cards yet — silently ignore.
+    }
   }
 
   Future<void> _openLink(String url) async {
@@ -84,6 +105,7 @@ class _DashboardPageState extends State<DashboardPage> {
     _onlineSub?.cancel();
     _priceSub?.cancel();
     _autoSlideTimer?.cancel();
+    _cardsTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -143,7 +165,7 @@ class _DashboardPageState extends State<DashboardPage> {
               return RefreshIndicator(
                 onRefresh: () async {
                   context.read<DashboardBloc>().add(LoadDashboard());
-                  await _loadSlides();
+                  await Future.wait([_loadSlides(), _loadCards()]);
                 },
                 child: ListView(
                   padding: const EdgeInsets.all(16),
@@ -155,6 +177,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     _buildMarketStatusCard(),
                     const SizedBox(height: 16),
                     _buildBalanceCard(context, state),
+                    const SizedBox(height: 16),
+                    _buildDebitCardsSection(context),
                     const SizedBox(height: 16),
                     _buildPnlCard(context, state),
                     const SizedBox(height: 16),
@@ -265,6 +289,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildBalanceCard(BuildContext context, DashboardLoaded state) {
     final t = AppLocalizations.of(context);
+    final bonus = _activeCards.fold<double>(
+      0,
+      (sum, c) => sum + (double.tryParse(c['bonusAmount']?.toString() ?? '0') ?? 0),
+    );
+    final effective = state.balance + bonus;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -275,9 +304,102 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey)),
             const SizedBox(height: 8),
             Text(
-              '\$${state.balance.toStringAsFixed(2)}',
+              '\$${effective.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
+            if (bonus > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.credit_card, size: 14, color: Color(0xFFD4AF37)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${t.tr('bonusBalance')}: +\$${bonus.toStringAsFixed(2)}',
+                    style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.w600, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDebitCardsSection(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.credit_card, color: Color(0xFFD4AF37), size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(t.tr('debitCards'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+                TextButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DebitCardsPage()),
+                    );
+                    _loadCards();
+                  },
+                  child: const Text('+', style: TextStyle(color: Color(0xFFD4AF37), fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            if (_activeCards.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(t.tr('noActiveCards'), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              )
+            else
+              ..._activeCards.map((m) {
+                final card = m['debitCard'] as Map<String, dynamic>;
+                final bonus = double.tryParse(m['bonusAmount']?.toString() ?? '0') ?? 0;
+                final pct = double.tryParse(m['percentage']?.toString() ?? '0') ?? 0;
+                final expiresAt = DateTime.tryParse(m['expiresAt']?.toString() ?? '');
+                final remaining = expiresAt == null
+                    ? '—'
+                    : (() {
+                        final mins = expiresAt.difference(DateTime.now()).inMinutes;
+                        if (mins <= 0) return 'expired';
+                        final h = mins ~/ 60;
+                        final mm = mins % 60;
+                        if (h > 0) return '${h}h ${mm}m';
+                        return '${mm}m';
+                      })();
+                final isLow = remaining != 'expired' && (expiresAt?.difference(DateTime.now()).inMinutes ?? 99) < 60;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(card['nameEn']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            Text(
+                              '${pct.toStringAsFixed(0)}%  •  +\$${bonus.toStringAsFixed(2)}',
+                              style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 14, color: isLow ? Colors.amber : Colors.green),
+                          const SizedBox(width: 4),
+                          Text(remaining, style: TextStyle(fontSize: 12, color: isLow ? Colors.amber : Colors.green, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }),
           ],
         ),
       ),

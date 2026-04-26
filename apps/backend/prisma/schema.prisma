@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   ADMIN
   USER
+  SHOP
 }
 
 enum TradeStatus {
@@ -29,6 +30,10 @@ enum TransactionType {
   TRADE_OPEN
   TRADE_CLOSE
   COMMISSION
+  DEBIT_CARD_PURCHASE
+  DEBIT_CARD_INCOME
+  SUBSCRIPTION_PURCHASE
+  SUBSCRIPTION_INCOME
 }
 
 model User {
@@ -46,9 +51,11 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  balance      Balance?
-  trades       Trade[]
-  transactions Transaction[]
+  balance       Balance?
+  trades        Trade[]
+  transactions  Transaction[]
+  debitCards    UserDebitCard[]
+  subscriptions Subscription[]
 
   @@map("users")
 }
@@ -65,21 +72,25 @@ model Balance {
 }
 
 model Symbol {
-  id          String   @id @default(uuid())
-  name        String
-  displayName String   @map("display_name")
-  mtSymbol    String   @map("mt_symbol")
-  lotSize     Decimal  @map("lot_size") @db.Decimal(10, 4)
-  amount      Decimal  @db.Decimal(18, 2)
-  amountLabel String?  @map("amount_label") @db.VarChar(200)
-  formula     String?  @map("formula") @db.VarChar(500)
-  commission  Decimal  @default(0) @db.Decimal(18, 2)
-  isTradable  Boolean  @default(false) @map("is_tradable")
-  isReadOnly  Boolean  @default(false) @map("is_read_only")
-  isDeleted   Boolean  @default(false) @map("is_deleted")
-  categoryId  String?  @map("category_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  name            String
+  displayName     String   @map("display_name")
+  mtSymbol        String   @map("mt_symbol")
+  lotSize         Decimal  @map("lot_size") @db.Decimal(10, 4)
+  amount          Decimal  @db.Decimal(18, 2)
+  amountLabel     String?  @map("amount_label") @db.VarChar(200)
+  formula         String?  @map("formula") @db.VarChar(500)
+  // Legacy single-value commission (still used as fallback if user-tier values are zero)
+  commission      Decimal  @default(0) @db.Decimal(18, 2)
+  // New: per-role commissions. When non-zero these override `commission`.
+  commissionUser  Decimal  @default(0) @map("commission_user") @db.Decimal(18, 2)
+  commissionShop  Decimal  @default(0) @map("commission_shop") @db.Decimal(18, 2)
+  isTradable      Boolean  @default(false) @map("is_tradable")
+  isReadOnly      Boolean  @default(false) @map("is_read_only")
+  isDeleted       Boolean  @default(false) @map("is_deleted")
+  categoryId      String?  @map("category_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   trades   Trade[]
   category SymbolCategory? @relation(fields: [categoryId], references: [id])
@@ -183,4 +194,80 @@ model Slideshow {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("slideshows")
+}
+
+/// Admin-defined "debit card" template that users can purchase.
+/// When purchased, the user's balance is virtually boosted by
+/// `percentage`% of their balance at purchase time, for `durationHours`.
+model DebitCard {
+  id             String   @id @default(uuid())
+  nameEn         String   @map("name_en") @db.VarChar(150)
+  nameAr         String   @map("name_ar") @db.VarChar(150)
+  nameCkb        String   @map("name_ckb") @db.VarChar(150)
+  percentage     Decimal  @db.Decimal(8, 2) // e.g. 25.00 = +25 %
+  price          Decimal  @db.Decimal(18, 2) // fee paid to admin (USD)
+  durationHours  Int      @map("duration_hours")
+  isActive       Boolean  @default(true) @map("is_active")
+  isDeleted      Boolean  @default(false) @map("is_deleted")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  purchases UserDebitCard[]
+
+  @@map("debit_cards")
+}
+
+/// One row per purchase. Snapshots the user's balance at purchase time so
+/// the bonus amount stays stable for the duration even if balance changes.
+model UserDebitCard {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  debitCardId     String   @map("debit_card_id")
+  pricePaid       Decimal  @map("price_paid") @db.Decimal(18, 2)
+  percentage      Decimal  @db.Decimal(8, 2)
+  bonusAmount     Decimal  @map("bonus_amount") @db.Decimal(18, 2) // snapshot of (balance * percentage)
+  durationHours   Int      @map("duration_hours")
+  purchasedAt     DateTime @default(now()) @map("purchased_at")
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id])
+  debitCard DebitCard @relation(fields: [debitCardId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_debit_cards")
+}
+
+/// Admin-authored blog posts shown inside the Flutter app to subscribed users.
+model BlogPost {
+  id          String   @id @default(uuid())
+  title       String   @db.VarChar(255)
+  content     String   @db.Text
+  imageUrl    String?  @map("image_url") @db.Text
+  isPublished Boolean  @default(true) @map("is_published")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  publishedAt DateTime @default(now()) @map("published_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([publishedAt])
+  @@map("blog_posts")
+}
+
+/// One row per user subscription purchase. While `expiresAt` is in the future
+/// the user has access to BlogPosts.
+model Subscription {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  pricePaid   Decimal  @map("price_paid") @db.Decimal(18, 2)
+  startsAt    DateTime @default(now()) @map("starts_at")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("subscriptions")
 }

@@ -99,6 +99,7 @@ export default function UsersPage() {
             <tr className="border-b border-[#334155]">
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.phone')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.name')}</th>
+              <th className="text-left px-6 py-4 text-sm text-gray-400">Role</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.balance')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.status')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.actions')}</th>
@@ -109,6 +110,11 @@ export default function UsersPage() {
               <tr key={user.id} className="border-b border-[#334155]/50 hover:bg-white/5">
                 <td className="px-6 py-4">{user.phone}</td>
                 <td className="px-6 py-4">{user.firstName} {user.lastName}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${user.role === 'SHOP' ? 'bg-purple-500/20 text-purple-400' : user.role === 'ADMIN' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                    {user.role || 'USER'}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-[#D4AF37] font-semibold">${user.balance?.amount ?? '0'}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded text-xs ${user.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
