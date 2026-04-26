@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../l10n/app_localizations.dart';
+import 'blog_detail_page.dart';
 
 class BlogPage extends StatefulWidget {
   const BlogPage({super.key});
@@ -279,106 +278,339 @@ class _BlogPageState extends State<BlogPage> {
   }
 
   Widget _buildPostsList(AppLocalizations t) {
+    if (_posts.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SubscriptionBanner(remaining: _remaining()),
+          const SizedBox(height: 60),
+          Center(child: Text(t.tr('noPosts'), style: const TextStyle(color: Colors.grey, fontSize: 15))),
+        ],
+      );
+    }
+
+    final featured = _posts.first as Map<String, dynamic>;
+    final rest = _posts.sublist(1).cast<Map<String, dynamic>>();
+
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        // Subscription status banner
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFD4AF37).withValues(alpha: 0.08),
-            border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
+        _SubscriptionBanner(remaining: _remaining()),
+        const SizedBox(height: 18),
+        // Featured (large) card
+        _FeaturedPostCard(post: featured),
+        if (rest.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          Row(
             children: [
-              const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  t.tr('subscriptionActive'),
-                  style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.w600, fontSize: 13),
+              Container(
+                width: 4, height: 18,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Icon(Icons.access_time, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text('${t.tr('subscriptionExpires')} ${_remaining()}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(width: 10),
+              const Text('More posts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
-        ),
-
-        if (_posts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: Text(t.tr('noPosts'), style: const TextStyle(color: Colors.grey))),
-          )
-        else
-          ..._posts.map((p) => _PostCard(post: p as Map<String, dynamic>)),
+          const SizedBox(height: 12),
+          ...rest.map((p) => _CompactPostCard(post: p)),
+        ],
       ],
     );
   }
 }
 
-class _PostCard extends StatelessWidget {
-  final Map<String, dynamic> post;
-  const _PostCard({required this.post});
+// ─── Modern blog card components ──────────────────────────────────────
 
-  /// Resolve a relative `/uploads/...` path to a full URL for the device.
-  String _resolveImageUrl(String url) {
-    if (url.isEmpty || url.startsWith('http')) return url;
-    return '${ApiConstants.host}$url';
-  }
+String _resolveImageUrl(String url) {
+  if (url.isEmpty || url.startsWith('http')) return url;
+  return '${ApiConstants.host}$url';
+}
+
+String _excerpt(String html, int maxChars) {
+  // Strip tags + collapse whitespace for the preview snippet
+  final stripped = html.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (stripped.length <= maxChars) return stripped;
+  return '${stripped.substring(0, maxChars).trimRight()}…';
+}
+
+String _shortDate(DateTime d) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${months[d.month - 1]} ${d.day}';
+}
+
+void _openDetail(BuildContext context, Map<String, dynamic> post) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => BlogDetailPage(post: post)),
+  );
+}
+
+class _SubscriptionBanner extends StatelessWidget {
+  final String remaining;
+  const _SubscriptionBanner({required this.remaining});
 
   @override
   Widget build(BuildContext context) {
-    final raw = post['imageUrl']?.toString() ?? '';
-    final imageUrl = _resolveImageUrl(raw);
-    final published = DateTime.tryParse(post['publishedAt']?.toString() ?? '');
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final t = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD4AF37).withValues(alpha: 0.08),
+        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
         children: [
-          if (imageUrl.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: Colors.black12, child: const Center(child: Icon(Icons.image, color: Colors.grey))),
-              ),
+          const Icon(Icons.verified, color: Color(0xFFD4AF37), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              t.tr('subscriptionActive'),
+              style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.w600, fontSize: 13),
             ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const Icon(Icons.access_time, size: 13, color: Colors.grey),
+          const SizedBox(width: 4),
+          Text('${t.tr('subscriptionExpires')} $remaining', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Big hero-style card for the most-recent post. Tap → detail page.
+class _FeaturedPostCard extends StatelessWidget {
+  final Map<String, dynamic> post;
+  const _FeaturedPostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final imageUrl = _resolveImageUrl(post['imageUrl']?.toString() ?? '');
+    final title = post['title']?.toString() ?? '';
+    final excerpt = _excerpt(post['content']?.toString() ?? '', 130);
+    final published = DateTime.tryParse(post['publishedAt']?.toString() ?? '');
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openDetail(context, post),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1e293b) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (imageUrl.isNotEmpty)
+                Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.black12,
+                          child: const Center(child: Icon(Icons.image, color: Colors.grey, size: 40)),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 12, left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4AF37),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 12, color: Colors.black),
+                            SizedBox(width: 4),
+                            Text('Featured', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (published != null) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 12, color: Color(0xFFD4AF37)),
+                          const SizedBox(width: 5),
+                          Text(_shortDate(published), style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 11, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    if (excerpt.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        excerpt,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: Colors.grey[isDark ? 400 : 700],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text('Read article', style: TextStyle(color: const Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_forward, size: 14, color: Color(0xFFD4AF37)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact horizontal card: thumbnail + title + date on the right.
+class _CompactPostCard extends StatelessWidget {
+  final Map<String, dynamic> post;
+  const _CompactPostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final imageUrl = _resolveImageUrl(post['imageUrl']?.toString() ?? '');
+    final title = post['title']?.toString() ?? '';
+    final excerpt = _excerpt(post['content']?.toString() ?? '', 75);
+    final published = DateTime.tryParse(post['publishedAt']?.toString() ?? '');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openDetail(context, post),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1e293b) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(post['title']?.toString() ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                if (published != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '${published.year}-${published.month.toString().padLeft(2, '0')}-${published.day.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                // Thumbnail
+                SizedBox(
+                  width: 110,
+                  child: imageUrl.isEmpty
+                      ? Container(
+                          color: const Color(0xFFD4AF37).withValues(alpha: 0.1),
+                          child: const Center(child: Icon(Icons.article, color: Color(0xFFD4AF37), size: 28)),
+                        )
+                      : Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.black12,
+                            child: const Center(child: Icon(Icons.image, color: Colors.grey)),
+                          ),
+                        ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                height: 1.25,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            if (excerpt.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                excerpt,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, color: Colors.grey[isDark ? 500 : 600], height: 1.4),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (published != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 11, color: Color(0xFFD4AF37)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _shortDate(published),
+                                  style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.w600),
+                                ),
+                                const Spacer(),
+                                const Icon(Icons.arrow_forward_ios, size: 11, color: Colors.grey),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ],
-                const SizedBox(height: 10),
-                HtmlWidget(
-                  post['content']?.toString() ?? '',
-                  textStyle: const TextStyle(fontSize: 14, height: 1.55),
-                  // Resolve relative `/uploads/...` URLs against the API host
-                  baseUrl: Uri.parse(ApiConstants.host),
-                  onTapUrl: (url) async {
-                    final uri = Uri.tryParse(url);
-                    if (uri == null) return false;
-                    return launchUrl(uri, mode: LaunchMode.externalApplication);
-                  },
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

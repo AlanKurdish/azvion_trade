@@ -28,8 +28,13 @@ class WebSocketClient {
     final builder = io.OptionBuilder()
         .setTransports(['websocket', 'polling'])
         .enableReconnection()
-        .setReconnectionAttempts(50)
+        // Effectively infinite — lifecycle observer also kicks reconnects
+        // when the app resumes from background, but socket.io should keep
+        // trying on its own too.
+        .setReconnectionAttempts(0x7fffffff)
         .setReconnectionDelay(2000)
+        .setReconnectionDelayMax(15000)
+        .setRandomizationFactor(0.3)
         .enableForceNew()
         .disableAutoConnect();
 

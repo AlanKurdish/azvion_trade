@@ -147,14 +147,31 @@ class _GuestShell extends StatefulWidget {
   State<_GuestShell> createState() => _GuestShellState();
 }
 
-class _GuestShellState extends State<_GuestShell> {
+class _GuestShellState extends State<_GuestShell> with WidgetsBindingObserver {
   int _index = 1; // Start on login tab
+  final WebSocketClient _ws = sl<WebSocketClient>();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Connect WebSocket for live prices (guest mode, no token)
-    sl<WebSocketClient>().connect();
+    _ws.connect();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Reconnect the WebSocket when the app comes back from background.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && !_ws.isConnected) {
+      _ws.connect();
+    }
   }
 
   @override
@@ -189,14 +206,31 @@ class _DemoShell extends StatefulWidget {
   State<_DemoShell> createState() => _DemoShellState();
 }
 
-class _DemoShellState extends State<_DemoShell> {
+class _DemoShellState extends State<_DemoShell> with WidgetsBindingObserver {
   int _index = 0;
+  final WebSocketClient _ws = sl<WebSocketClient>();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Connect WebSocket for live prices (no auth token)
-    sl<WebSocketClient>().connect();
+    _ws.connect();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Reconnect the WebSocket when the app comes back from background.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && !_ws.isConnected) {
+      _ws.connect();
+    }
   }
 
   @override

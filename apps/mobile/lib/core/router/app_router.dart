@@ -19,7 +19,7 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => MainShellState();
 }
 
-class MainShellState extends State<MainShell> {
+class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final WebSocketClient _wsClient = sl<WebSocketClient>();
   StreamSubscription? _tradeOpenedSub;
@@ -39,6 +39,7 @@ class MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Reconnect WebSocket with auth token
     _wsClient.disconnect();
@@ -74,10 +75,34 @@ class MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tradeOpenedSub?.cancel();
     _tradeClosedSub?.cancel();
     _balanceSub?.cancel();
     super.dispose();
+  }
+
+  /// Resume the WebSocket whenever the app comes back from background.
+  /// Android often pauses or kills the underlying socket after a long
+  /// idle period; the built-in 50-attempt auto-reconnect will have given
+  /// up by then, so we kick it back to life manually here.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      if (!_wsClient.isConnected) {
+        // ignore: avoid_print
+        print('[lifecycle] resumed → WS not connected, reconnecting');
+        _wsClient.connect();
+      }
+      // Force a UI refresh so children fetch fresh data after resume
+      if (mounted) {
+        setState(() {
+          _dashboardRefresh++;
+          _positionsRefresh++;
+        });
+      }
+    }
   }
 
   /// Switch to a specific tab programmatically
