@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { FileText, Pencil, Plus, Trash2, X } from 'lucide-react';
 import RichTextEditor from '../components/RichTextEditor';
+import ImageUploader from '../components/ImageUploader';
 
 interface Post {
   id: string;
@@ -150,12 +151,17 @@ export default function BlogPage() {
                   onChange={(html) => setForm({ ...form, content: html })}
                   placeholder="Write your post here…"
                   minHeight={280}
+                  imageUploadUrl="/blog/upload"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Image URL (optional)</label>
-                <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://…" className="w-full px-3 py-2 bg-[#0f172a] border border-[#334155] rounded text-white text-sm" />
-              </div>
+              <ImageUploader
+                label="Cover image (optional)"
+                value={form.imageUrl}
+                uploadUrl="/blog/upload"
+                onChange={(url) => setForm({ ...form, imageUrl: url })}
+                onClear={() => setForm({ ...form, imageUrl: '' })}
+                height={180}
+              />
               <label className="flex items-center gap-2 text-sm text-gray-300">
                 <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} />
                 Published (visible to subscribers)

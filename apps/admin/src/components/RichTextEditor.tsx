@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -5,6 +6,7 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
+import api from '../lib/api';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Heading1, Heading2, Heading3,
@@ -18,9 +20,12 @@ interface Props {
   onChange: (html: string) => void;
   placeholder?: string;
   minHeight?: number;
+  /** When provided, the image toolbar button opens a file picker and uploads
+   * the chosen file to this endpoint instead of prompting for a URL. */
+  imageUploadUrl?: string;
 }
 
-export default function RichTextEditor({ value, onChange, placeholder = 'Write something…', minHeight = 240 }: Props) {
+export default function RichTextEditor({ value, onChange, placeholder = 'Write something…', minHeight = 240, imageUploadUrl }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -59,13 +64,15 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write s
 
   return (
     <div className="bg-[#0f172a] border border-[#334155] rounded-lg overflow-hidden">
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} imageUploadUrl={imageUploadUrl} />
       <EditorContent editor={editor} />
     </div>
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, imageUploadUrl }: { editor: Editor; imageUploadUrl?: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const promptForLink = () => {
     const previous = editor.getAttributes('link').href as string | undefined;
     const url = window.prompt('URL', previous ?? 'https://');
@@ -77,14 +84,42 @@ function Toolbar({ editor }: { editor: Editor }) {
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
-  const promptForImage = () => {
-    const url = window.prompt('Image URL', 'https://');
-    if (!url) return;
-    editor.chain().focus().setImage({ src: url }).run();
+  const onImageButtonClick = () => {
+    if (imageUploadUrl) {
+      fileInputRef.current?.click();
+    } else {
+      const url = window.prompt('Image URL', 'https://');
+      if (!url) return;
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+  };
+
+  const onImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !imageUploadUrl) return;
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post(imageUploadUrl, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      editor.chain().focus().setImage({ src: data.imageUrl }).run();
+    } catch (err: any) {
+      window.alert(err.response?.data?.message || 'Image upload failed');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
     <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-[#334155] bg-[#1a253b]">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        onChange={onImageSelected}
+        className="hidden"
+      />
       <Btn label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')}><Bold size={14} /></Btn>
       <Btn label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')}><Italic size={14} /></Btn>
       <Btn label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')}><UnderlineIcon size={14} /></Btn>
@@ -114,7 +149,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Sep />
 
       <Btn label="Link" onClick={promptForLink} active={editor.isActive('link')}><LinkIcon size={14} /></Btn>
-      <Btn label="Image" onClick={promptForImage}><ImageIcon size={14} /></Btn>
+      <Btn label={imageUploadUrl ? 'Upload image' : 'Image URL'} onClick={onImageButtonClick}><ImageIcon size={14} /></Btn>
 
       <Sep />
 

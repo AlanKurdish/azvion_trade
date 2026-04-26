@@ -188,9 +188,16 @@ class _PostCard extends StatelessWidget {
   final Map<String, dynamic> post;
   const _PostCard({required this.post});
 
+  /// Resolve a relative `/uploads/...` path to a full URL for the device.
+  String _resolveImageUrl(String url) {
+    if (url.isEmpty || url.startsWith('http')) return url;
+    return '${ApiConstants.host}$url';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final imageUrl = post['imageUrl']?.toString();
+    final raw = post['imageUrl']?.toString() ?? '';
+    final imageUrl = _resolveImageUrl(raw);
     final published = DateTime.tryParse(post['publishedAt']?.toString() ?? '');
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -198,7 +205,7 @@ class _PostCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (imageUrl != null && imageUrl.isNotEmpty)
+          if (imageUrl.isNotEmpty)
             AspectRatio(
               aspectRatio: 16 / 9,
               child: Image.network(
@@ -224,6 +231,8 @@ class _PostCard extends StatelessWidget {
                 HtmlWidget(
                   post['content']?.toString() ?? '',
                   textStyle: const TextStyle(fontSize: 14, height: 1.55),
+                  // Resolve relative `/uploads/...` URLs against the API host
+                  baseUrl: Uri.parse(ApiConstants.host),
                   onTapUrl: (url) async {
                     final uri = Uri.tryParse(url);
                     if (uri == null) return false;
