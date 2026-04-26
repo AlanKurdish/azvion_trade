@@ -11,14 +11,6 @@ class AuthRepositoryImpl implements AuthRepository {
       _datasource.login(phone, password);
 
   @override
-  Future<Map<String, dynamic>> directLogin(String phone, String password) =>
-      _datasource.directLogin(phone, password);
-
-  @override
-  Future<Map<String, dynamic>> verifyOtp(String phone, String code) =>
-      _datasource.verifyOtp(phone, code);
-
-  @override
   Future<void> logout() => _datasource.logout();
 
   @override

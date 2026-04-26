@@ -27,26 +27,6 @@ class AuthRemoteDatasource {
     return data;
   }
 
-  Future<Map<String, dynamic>> directLogin(String phone, String password) async {
-    final response = await _apiClient.dio.post(ApiConstants.directLogin, data: {
-      'phone': phone,
-      'password': password,
-    });
-    final data = response.data;
-    await _persistAuth(data);
-    return data;
-  }
-
-  Future<Map<String, dynamic>> verifyOtp(String phone, String code) async {
-    final response = await _apiClient.dio.post(ApiConstants.verifyOtp, data: {
-      'phone': phone,
-      'code': code,
-    });
-    final data = response.data;
-    await _persistAuth(data);
-    return data;
-  }
-
   /// Returns the cached user role ('USER' / 'SHOP' / 'ADMIN'); defaults to 'USER'
   Future<String> getRole() async {
     return (await _storage.read(key: 'user_role')) ?? 'USER';

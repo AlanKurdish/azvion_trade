@@ -1,7 +1,6 @@
 import {
   Injectable,
   UnauthorizedException,
-  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -29,49 +28,6 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(user.id, user.role);
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken: hashedRefreshToken },
-    });
-
-    return {
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      },
-    };
-  }
-
-  async verifyOtp(phone: string, code: string) {
-    const user = await this.prisma.user.findUnique({ where: { phone } });
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (user.otpCode !== code) {
-      throw new BadRequestException('Invalid OTP code');
-    }
-
-    if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
-      throw new BadRequestException('OTP expired');
-    }
-
-    // Clear OTP
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { otpCode: null, otpExpiresAt: null },
-    });
-
-    const tokens = await this.generateTokens(user.id, user.role);
-
-    // Store hashed refresh token
     const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
     await this.prisma.user.update({
       where: { id: user.id },
@@ -155,43 +111,4 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async directLogin(phone: string, password: string) {
-    const isDebug = this.configService.get<string>('OTP_DEBUG') === 'true';
-    if (!isDebug) {
-      throw new BadRequestException('Direct login is not available');
-    }
-
-    const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const tokens = await this.generateTokens(user.id, user.role);
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken: hashedRefreshToken },
-    });
-
-    return {
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      },
-    };
-  }
-
-  private generateOtp(): string {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-  }
 }
