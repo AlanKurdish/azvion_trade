@@ -58,6 +58,8 @@ const Map<String, String> en = {
   'noActiveCards': 'No active debit cards',
   'noCardsAvailable': 'No cards available right now',
   'cardBoughtSuccess': 'Card purchased successfully',
+  'oneCardAtATime': 'You can only have one active card at a time. Wait until the current one expires.',
+  'cardLocked': 'Active card already in use',
   'cardPrice': 'Card price',
   'newBalance': 'New balance',
   'cardActiveFor': 'Active for {hours} hour(s) from purchase',

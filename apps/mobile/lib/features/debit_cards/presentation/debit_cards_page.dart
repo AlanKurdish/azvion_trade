@@ -362,6 +362,33 @@ class _DebitCardsPageState extends State<DebitCardsPage> {
                   const SizedBox(height: 24),
                   Text(t.tr('debitCards'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 8),
+
+                  // When the user already has an active card, show a banner
+                  // and hide every "Buy" button — only one card at a time.
+                  if (_mine.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: Color(0xFFD4AF37), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              t.tr('oneCardAtATime'),
+                              style: const TextStyle(color: Color(0xFFD4AF37), fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
                   if (_cards.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(20),
@@ -418,16 +445,25 @@ class _DebitCardsPageState extends State<DebitCardsPage> {
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: isBuying ? null : () => _onBuyTap(c as Map<String, dynamic>),
+                                  // Disable if a buy is already in flight, OR
+                                  // if the user already owns an unexpired card.
+                                  onPressed: (isBuying || _mine.isNotEmpty)
+                                      ? null
+                                      : () => _onBuyTap(c as Map<String, dynamic>),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFFD4AF37),
                                     foregroundColor: Colors.black,
                                     padding: const EdgeInsets.symmetric(vertical: 10),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    disabledBackgroundColor: Colors.grey.withValues(alpha: 0.2),
+                                    disabledForegroundColor: Colors.grey,
                                   ),
                                   child: isBuying
                                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                                      : Text(t.tr('buyCard'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      : Text(
+                                          _mine.isNotEmpty ? t.tr('cardLocked') : t.tr('buyCard'),
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
                                 ),
                               ),
                             ],

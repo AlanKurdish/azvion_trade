@@ -58,6 +58,8 @@ const Map<String, String> ckb = {
   'noActiveCards': 'هیچ کارتێکی چالاک نییە',
   'noCardsAvailable': 'لە ئێستادا کارت بەردەست نییە',
   'cardBoughtSuccess': 'کارت بە سەرکەوتوویی کڕدرا',
+  'oneCardAtATime': 'تەنها یەک کارتی چالاک دەتوانیت هەبێت. چاوەڕێی بکە تا کۆتایی دێت.',
+  'cardLocked': 'کارتێکی چالاک هەیە',
   'cardPrice': 'نرخی کارت',
   'newBalance': 'باڵانسی نوێ',
   'cardActiveFor': 'چالاکە بۆ {hours} کاتژمێر لە دوای کڕین',

@@ -82,6 +82,19 @@ export class DebitCardsService {
       throw new NotFoundException('Card not found');
     }
 
+    // Hard rule: only ONE active debit card per user at any time.
+    // If they have an unexpired purchase, refuse a new one until it expires.
+    const now = new Date();
+    const existingActive = await this.prisma.userDebitCard.findFirst({
+      where: { userId, expiresAt: { gt: now } },
+      orderBy: { expiresAt: 'desc' },
+    });
+    if (existingActive) {
+      throw new BadRequestException(
+        `You already have an active debit card. Please wait until it expires (${existingActive.expiresAt.toISOString()}) before buying another.`,
+      );
+    }
+
     const balance = await this.prisma.balance.findUnique({ where: { userId } });
     if (!balance) throw new BadRequestException('No balance record');
     if (Number(balance.amount) < Number(card.price)) {
@@ -101,6 +114,17 @@ export class DebitCardsService {
     const expiresAt = new Date(Date.now() + card.durationHours * 60 * 60 * 1000);
 
     const purchase = await this.prisma.$transaction(async (tx) => {
+      // Re-check active card inside transaction to close the race window
+      // between the initial check and this insert.
+      const stillActive = await tx.userDebitCard.findFirst({
+        where: { userId, expiresAt: { gt: new Date() } },
+      });
+      if (stillActive) {
+        throw new BadRequestException(
+          'You already have an active debit card.',
+        );
+      }
+
       // Re-check balance inside transaction
       const cur = await tx.balance.findUnique({ where: { userId } });
       if (!cur || Number(cur.amount) < Number(card.price)) {

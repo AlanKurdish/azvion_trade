@@ -58,6 +58,8 @@ const Map<String, String> ar = {
   'noActiveCards': 'لا توجد بطاقات نشطة',
   'noCardsAvailable': 'لا توجد بطاقات متاحة حاليا',
   'cardBoughtSuccess': 'تم شراء البطاقة بنجاح',
+  'oneCardAtATime': 'يمكنك امتلاك بطاقة نشطة واحدة فقط في كل مرة. انتظر حتى تنتهي الحالية.',
+  'cardLocked': 'لديك بطاقة نشطة بالفعل',
   'cardPrice': 'سعر البطاقة',
   'newBalance': 'الرصيد الجديد',
   'cardActiveFor': 'نشطة لمدة {hours} ساعة من وقت الشراء',
