@@ -203,9 +203,9 @@ export default function SettingsPage() {
 
       {/* Blog subscription price */}
       <div className="bg-[#1e293b] p-6 rounded-xl border border-[#334155]">
-        <h3 className="text-lg font-semibold mb-1">Blog Subscription Price</h3>
+        <h3 className="text-lg font-semibold mb-1">{t('settings.subPriceTitle')}</h3>
         <p className="text-sm text-gray-400 mb-3">
-          Monthly fee users pay to read blog posts in the app. Set to 0 to disable subscriptions.
+          {t('settings.subPriceHelp')}
         </p>
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-xs">
@@ -219,7 +219,7 @@ export default function SettingsPage() {
               className="w-full pl-8 pr-4 py-2.5 bg-[#0f172a] border border-[#334155] rounded-lg text-white"
             />
           </div>
-          <span className="text-gray-400 text-sm">/ month</span>
+          <span className="text-gray-400 text-sm">{t('settings.perMonth')}</span>
           <button onClick={saveSubPrice} className="px-6 py-2.5 bg-[#D4AF37] text-black rounded-lg font-semibold">{t('settings.save')}</button>
           {subSaved && <span className="text-green-400 text-sm">{t('settings.saved')}</span>}
         </div>

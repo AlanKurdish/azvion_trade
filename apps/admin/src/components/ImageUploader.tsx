@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../lib/api';
 import { Upload, Image as ImageIcon, X } from 'lucide-react';
 
@@ -25,8 +26,9 @@ export default function ImageUploader({
   onClear,
   uploadUrl,
   height = 200,
-  label = 'Image',
+  label,
 }: Props) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -34,10 +36,10 @@ export default function ImageUploader({
 
   const validate = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return `Invalid type. Allowed: JPG, PNG, WEBP, GIF`;
+      return t('uploader.invalidType');
     }
     if (file.size > MAX_SIZE) {
-      return `File too large (max ${MAX_SIZE / 1024 / 1024} MB)`;
+      return t('uploader.tooLarge', { mb: MAX_SIZE / 1024 / 1024 });
     }
     return null;
   };
@@ -55,7 +57,7 @@ export default function ImageUploader({
       });
       onChange(data.imageUrl);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Upload failed');
+      setError(err.response?.data?.message || t('uploader.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -78,7 +80,7 @@ export default function ImageUploader({
 
   return (
     <div>
-      <label className="block text-sm text-gray-400 mb-1">{label}</label>
+      <label className="block text-sm text-gray-400 mb-1">{label ?? t('uploader.label')}</label>
       <input
         ref={inputRef}
         type="file"
@@ -113,7 +115,7 @@ export default function ImageUploader({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onClear(); setError(''); }}
                 className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500/80 rounded-full text-white"
-                title="Remove image"
+                title={t('uploader.removeImage')}
               >
                 <X size={14} />
               </button>
@@ -124,13 +126,13 @@ export default function ImageUploader({
             {uploading ? (
               <>
                 <div className="w-7 h-7 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-2" />
-                <span className="text-sm">Uploading…</span>
+                <span className="text-sm">{t('uploader.uploading')}</span>
               </>
             ) : (
               <>
                 <Upload size={28} className="mb-2" />
-                <span className="text-sm">Drag & drop or click to choose an image</span>
-                <span className="text-xs text-gray-600 mt-1">JPG, PNG, WEBP, GIF — max 5 MB</span>
+                <span className="text-sm">{t('uploader.dropOrClick')}</span>
+                <span className="text-xs text-gray-600 mt-1">{t('uploader.fileHint')}</span>
               </>
             )}
           </div>

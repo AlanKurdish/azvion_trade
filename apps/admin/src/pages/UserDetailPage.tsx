@@ -216,7 +216,7 @@ export default function UserDetailPage() {
                 <span>{user.lastName || '-'}</span>
               </div>
               <div>
-                <span className="text-gray-400 block text-xs">Role</span>
+                <span className="text-gray-400 block text-xs">{t('roles.label')}</span>
                 <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${user.role === 'SHOP' ? 'bg-purple-500/20 text-purple-400' : user.role === 'ADMIN' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>{user.role || 'USER'}</span>
               </div>
               <div>
@@ -259,17 +259,17 @@ export default function UserDetailPage() {
                 {editErrors.lastName && <p className="text-red-400 text-xs mt-1">{editErrors.lastName}</p>}
               </div>
               <div>
-                <label className="text-xs text-gray-400">Role</label>
+                <label className="text-xs text-gray-400">{t('roles.label')}</label>
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
                   className="w-full mt-1 px-3 py-2 bg-[#0f172a] border border-[#334155] rounded text-sm text-white"
                 >
-                  <option value="USER">USER</option>
-                  <option value="SHOP">SHOP</option>
-                  <option value="ADMIN">ADMIN</option>
+                  <option value="USER">{t('roles.user')}</option>
+                  <option value="SHOP">{t('roles.shop')}</option>
+                  <option value="ADMIN">{t('roles.admin')}</option>
                 </select>
-                <p className="text-[10px] text-gray-500 mt-1">SHOP users get the shop commission rate on every trade</p>
+                <p className="text-[10px] text-gray-500 mt-1">{t('roles.shopHelp')}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-400">{t('userDetail.status')}</label>

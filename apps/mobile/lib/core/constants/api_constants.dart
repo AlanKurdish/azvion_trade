@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String _baseHost = 'http://azne-app.com';
+  static const String _baseHost = 'https://azne-app.com';
 
   static String get host => _baseHost;
   static String get baseUrl => '$_baseHost/api';

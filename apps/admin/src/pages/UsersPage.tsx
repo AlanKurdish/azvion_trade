@@ -99,7 +99,7 @@ export default function UsersPage() {
             <tr className="border-b border-[#334155]">
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.phone')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.name')}</th>
-              <th className="text-left px-6 py-4 text-sm text-gray-400">Role</th>
+              <th className="text-left px-6 py-4 text-sm text-gray-400">{t('roles.label')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.balance')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.status')}</th>
               <th className="text-left px-6 py-4 text-sm text-gray-400">{t('users.actions')}</th>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../lib/api';
 import { Activity, Clock } from 'lucide-react';
 
@@ -14,10 +15,10 @@ interface Row {
   expiresAt: string;
 }
 
-function fmtRemaining(expiresAt: string) {
+function fmtRemaining(expiresAt: string, expiredLabel: string) {
   const end = new Date(expiresAt).getTime();
   const ms = end - Date.now();
-  if (ms <= 0) return 'expired';
+  if (ms <= 0) return expiredLabel;
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   if (h > 0) return `${h}h ${m}m`;
@@ -25,6 +26,7 @@ function fmtRemaining(expiresAt: string) {
 }
 
 export default function ActiveDebitsPage() {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<Row[]>([]);
   const [, setTick] = useState(0);
 
@@ -42,19 +44,21 @@ export default function ActiveDebitsPage() {
     return () => { clearInterval(id); clearInterval(refresh); };
   }, []);
 
+  const expiredLabel = t('activeDebits.expired');
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="text-[#D4AF37]" size={26} /> Active Debits
+            <Activity className="text-[#D4AF37]" size={26} /> {t('activeDebits.title')}
           </h2>
           <p className="text-sm text-gray-400 mt-1">
-            Currently-active debit-card boosts across all users.
+            {t('activeDebits.subtitle')}
           </p>
         </div>
         <button onClick={load} className="px-4 py-2 border border-[#334155] rounded-lg text-sm text-gray-300 hover:bg-white/5">
-          Refresh
+          {t('activeDebits.refresh')}
         </button>
       </div>
 
@@ -62,21 +66,21 @@ export default function ActiveDebitsPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#334155]">
-              <th className="text-left px-6 py-3 text-sm text-gray-400">User</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Role</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Card</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">% boost</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Bonus</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Paid</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Bought</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Expires</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Remaining</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.user')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.role')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.card')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.boost')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.bonus')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.paid')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.bought')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.expires')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('activeDebits.remaining')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => {
-              const remaining = fmtRemaining(r.expiresAt);
-              const isLow = remaining !== 'expired' && (new Date(r.expiresAt).getTime() - Date.now()) < 60 * 60 * 1000;
+              const remaining = fmtRemaining(r.expiresAt, expiredLabel);
+              const isLow = remaining !== expiredLabel && (new Date(r.expiresAt).getTime() - Date.now()) < 60 * 60 * 1000;
               return (
                 <tr key={r.id} className="border-b border-[#334155]/50 hover:bg-white/5">
                   <td className="px-6 py-3">
@@ -103,7 +107,7 @@ export default function ActiveDebitsPage() {
               );
             })}
             {rows.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No active debit-card purchases.</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-gray-400">{t('activeDebits.noActive')}</td></tr>
             )}
           </tbody>
         </table>

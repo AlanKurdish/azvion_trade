@@ -171,8 +171,8 @@ export default function SymbolsPage() {
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.lotSize')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.amount')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.formula')}</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">User Comm.</th>
-              <th className="text-left px-6 py-3 text-sm text-gray-400">Shop Comm.</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.userCommHeader')}</th>
+              <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.shopCommHeader')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.category')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.tradable')}</th>
               <th className="text-left px-6 py-3 text-sm text-gray-400">{t('symbols.readOnly')}</th>
@@ -319,16 +319,16 @@ export default function SymbolsPage() {
               <input value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} placeholder={t('symbols.formulaPlaceholder')} className="col-span-2 px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white font-mono" />
               <div className="col-span-2 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-blue-400 mb-1">User Commission ($)</label>
+                  <label className="block text-xs text-blue-400 mb-1">{t('symbols.userCommLabel')}</label>
                   <input value={form.commissionUser} onChange={(e) => setForm({ ...form, commissionUser: e.target.value })} placeholder="e.g. 25" type="number" step="0.01" className="w-full px-3 py-2 bg-[#0f172a] border border-blue-500/30 rounded-lg text-white" />
                 </div>
                 <div>
-                  <label className="block text-xs text-purple-400 mb-1">Shop Commission ($)</label>
+                  <label className="block text-xs text-purple-400 mb-1">{t('symbols.shopCommLabel')}</label>
                   <input value={form.commissionShop} onChange={(e) => setForm({ ...form, commissionShop: e.target.value })} placeholder="e.g. 15" type="number" step="0.01" className="w-full px-3 py-2 bg-[#0f172a] border border-purple-500/30 rounded-lg text-white" />
                 </div>
-                <p className="col-span-2 text-[10px] text-gray-500 -mt-2">Per-role commissions. The legacy field below is kept as a fallback when both are 0.</p>
+                <p className="col-span-2 text-[10px] text-gray-500 -mt-2">{t('symbols.perRoleHelp')}</p>
               </div>
-              <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={`Legacy fallback ${t('symbols.commissionPlaceholder')}`} type="number" step="0.01" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white text-sm" />
+              <input value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} placeholder={t('symbols.legacyFallback', { label: t('symbols.commissionPlaceholder') })} type="number" step="0.01" className="px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-lg text-white text-sm" />
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value })}

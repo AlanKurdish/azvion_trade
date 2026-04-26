@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -71,11 +72,12 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write s
 }
 
 function Toolbar({ editor, imageUploadUrl }: { editor: Editor; imageUploadUrl?: string }) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const promptForLink = () => {
     const previous = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('URL', previous ?? 'https://');
+    const url = window.prompt(t('rte.linkPrompt'), previous ?? 'https://');
     if (url === null) return;
     if (url === '') {
       editor.chain().focus().unsetLink().run();
@@ -88,7 +90,7 @@ function Toolbar({ editor, imageUploadUrl }: { editor: Editor; imageUploadUrl?: 
     if (imageUploadUrl) {
       fileInputRef.current?.click();
     } else {
-      const url = window.prompt('Image URL', 'https://');
+      const url = window.prompt(t('rte.imageUrlPrompt'), 'https://');
       if (!url) return;
       editor.chain().focus().setImage({ src: url }).run();
     }
@@ -105,7 +107,7 @@ function Toolbar({ editor, imageUploadUrl }: { editor: Editor; imageUploadUrl?: 
       });
       editor.chain().focus().setImage({ src: data.imageUrl }).run();
     } catch (err: any) {
-      window.alert(err.response?.data?.message || 'Image upload failed');
+      window.alert(err.response?.data?.message || t('rte.imageUploadFailed'));
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -120,41 +122,41 @@ function Toolbar({ editor, imageUploadUrl }: { editor: Editor; imageUploadUrl?: 
         onChange={onImageSelected}
         className="hidden"
       />
-      <Btn label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')}><Bold size={14} /></Btn>
-      <Btn label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')}><Italic size={14} /></Btn>
-      <Btn label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')}><UnderlineIcon size={14} /></Btn>
-      <Btn label="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')}><Strikethrough size={14} /></Btn>
+      <Btn label={t('rte.bold')} onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')}><Bold size={14} /></Btn>
+      <Btn label={t('rte.italic')} onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')}><Italic size={14} /></Btn>
+      <Btn label={t('rte.underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')}><UnderlineIcon size={14} /></Btn>
+      <Btn label={t('rte.strike')} onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')}><Strikethrough size={14} /></Btn>
 
       <Sep />
 
-      <Btn label="Heading 1" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })}><Heading1 size={14} /></Btn>
-      <Btn label="Heading 2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })}><Heading2 size={14} /></Btn>
-      <Btn label="Heading 3" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })}><Heading3 size={14} /></Btn>
+      <Btn label={t('rte.h1')} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })}><Heading1 size={14} /></Btn>
+      <Btn label={t('rte.h2')} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })}><Heading2 size={14} /></Btn>
+      <Btn label={t('rte.h3')} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })}><Heading3 size={14} /></Btn>
 
       <Sep />
 
-      <Btn label="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')}><List size={14} /></Btn>
-      <Btn label="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')}><ListOrdered size={14} /></Btn>
-      <Btn label="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')}><Quote size={14} /></Btn>
-      <Btn label="Code block" onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')}><Code size={14} /></Btn>
-      <Btn label="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus size={14} /></Btn>
+      <Btn label={t('rte.bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')}><List size={14} /></Btn>
+      <Btn label={t('rte.numberedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')}><ListOrdered size={14} /></Btn>
+      <Btn label={t('rte.quote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')}><Quote size={14} /></Btn>
+      <Btn label={t('rte.codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')}><Code size={14} /></Btn>
+      <Btn label={t('rte.horizontalRule')} onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus size={14} /></Btn>
 
       <Sep />
 
-      <Btn label="Align left" onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })}><AlignLeft size={14} /></Btn>
-      <Btn label="Align center" onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })}><AlignCenter size={14} /></Btn>
-      <Btn label="Align right" onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })}><AlignRight size={14} /></Btn>
-      <Btn label="Justify" onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })}><AlignJustify size={14} /></Btn>
+      <Btn label={t('rte.alignLeft')} onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })}><AlignLeft size={14} /></Btn>
+      <Btn label={t('rte.alignCenter')} onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })}><AlignCenter size={14} /></Btn>
+      <Btn label={t('rte.alignRight')} onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })}><AlignRight size={14} /></Btn>
+      <Btn label={t('rte.justify')} onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })}><AlignJustify size={14} /></Btn>
 
       <Sep />
 
-      <Btn label="Link" onClick={promptForLink} active={editor.isActive('link')}><LinkIcon size={14} /></Btn>
-      <Btn label={imageUploadUrl ? 'Upload image' : 'Image URL'} onClick={onImageButtonClick}><ImageIcon size={14} /></Btn>
+      <Btn label={t('rte.link')} onClick={promptForLink} active={editor.isActive('link')}><LinkIcon size={14} /></Btn>
+      <Btn label={imageUploadUrl ? t('rte.imageUpload') : t('rte.imageUrl')} onClick={onImageButtonClick}><ImageIcon size={14} /></Btn>
 
       <Sep />
 
-      <Btn label="Undo" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}><Undo size={14} /></Btn>
-      <Btn label="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}><Redo size={14} /></Btn>
+      <Btn label={t('rte.undo')} onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}><Undo size={14} /></Btn>
+      <Btn label={t('rte.redo')} onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}><Redo size={14} /></Btn>
     </div>
   );
 }
