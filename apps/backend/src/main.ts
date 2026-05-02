@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
@@ -11,7 +11,13 @@ async function bootstrap() {
   // Serve uploaded files at /uploads/*
   app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads' });
 
-  app.setGlobalPrefix('api');
+  // Public legal pages live at the site root (no /api prefix) so the URLs
+  // submitted to Google Play look like https://azne-app.com/privacy
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: 'privacy', method: RequestMethod.GET },
+    ],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -15,6 +15,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { DebitCardsModule } from './debit-cards/debit-cards.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { BlogModule } from './blog/blog.module';
+import { LegalModule } from './legal/legal.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { BlogModule } from './blog/blog.module';
     DebitCardsModule,
     SubscriptionModule,
     BlogModule,
+    LegalModule,
   ],
 })
 export class AppModule {}
