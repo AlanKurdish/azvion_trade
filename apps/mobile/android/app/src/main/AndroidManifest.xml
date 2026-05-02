@@ -1,12 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ── Required permissions ────────────────────────────────────── -->
+    <!-- Talk to the API + WebSocket (always required) -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Detect online/offline state to short-circuit failing network calls -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- Used by socket_io_client / dio to inspect WiFi vs cellular -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <!-- Keep the WebSocket alive briefly when the app is backgrounded -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Android 13+ runtime notification permission (if we ever push trade alerts) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
-        android:label="AZNE"
+        android:label="Azne App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -48,10 +58,6 @@
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="http"/>
         </intent>
     </queries>
 </manifest>

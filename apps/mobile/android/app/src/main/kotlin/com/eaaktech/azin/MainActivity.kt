@@ -1,4 +1,4 @@
-package com.azinforex.azin_forex
+package com.eaaktech.azin
 
 import io.flutter.embedding.android.FlutterActivity
 

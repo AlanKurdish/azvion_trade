@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Enforce HTTPS for the API.
+  base-config has cleartextTrafficPermitted="false", so any plain http://
+  request anywhere in the app will be blocked at the OS level.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
