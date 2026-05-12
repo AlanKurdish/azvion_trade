@@ -34,6 +34,19 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
   // Formula cache: mtSymbol -> Array<{ symbolId, formula }>
   private formulaCache: Map<string, Array<{ symbolId: string; formula: string }>> = new Map();
 
+  // Cached id of the lazily-created `__system__` user used to attribute
+  // adopted orphan trades. Resolved once per process.
+  private systemUserId: string | null = null;
+
+  // First time (epoch ms) we observed each orphan MT5 ticket. Used to wait
+  // out the brief window between a successful MT5 order_send and the
+  // matching DB insert in the normal /trades/open flow before adopting.
+  private firstSeenOrphan: Map<string, number> = new Map();
+
+  /** How long an orphan must be visible in MT5 before reconciliation
+   *  adopts it into the DB. Long enough to let /trades/open complete. */
+  private static readonly ORPHAN_ADOPT_DELAY_MS = 10_000;
+
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
@@ -411,7 +424,9 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Poll MT5 bridge for positions matching our open trades,
-   * and stream the real profit to users.
+   * stream real profit to users, and reconcile any drift between the
+   * MT5 ticket set and the DB Trade set (orphan positions in MT5,
+   * ghost-open trades in the DB).
    */
   private async pollPositionsForOpenTrades() {
     if (!this.connected) return;
@@ -421,8 +436,6 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
         where: { status: 'OPEN', mtOrderId: { not: null } },
         select: { id: true, userId: true, mtOrderId: true },
       });
-
-      if (openTrades.length === 0) return;
 
       const mtPositions = await this.callBridge<any[]>('GET', '/positions');
       const posMap = new Map<string, any>();
@@ -457,8 +470,220 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
 
       // Also send all MT5 positions to admins for the MT5 Positions tab
       this.wsGateway.emitAdminMtPositions(mtPositions);
+
+      // Reconciliation — surface drift between MT5 and the DB.
+      await this.reconcileMtPositions(openTrades, mtPositions);
     } catch {
       // Bridge not reachable, skip this poll
+    }
+  }
+
+  /**
+   * Detect drift between MT5 open positions and DB Trade records:
+   *  - Orphans: live in MT5 but no Trade row → adopt into the DB under a
+   *    `__system__` user once they've been visible long enough that we
+   *    know they're not just the brief gap between an MT5 order_send and
+   *    the matching DB insert. Orphans on unknown symbols (no Symbol row
+   *    with a matching mtSymbol) stay in the alert list.
+   *  - Ghosts: Trade row says OPEN but the ticket is gone from MT5 →
+   *    flip the row to CLOSED so admin lists stay honest.
+   */
+  private async reconcileMtPositions(
+    openTrades: Array<{ id: string; userId: string; mtOrderId: string | null }>,
+    mtPositions: any[],
+  ) {
+    const dbTicketSet = new Set(
+      openTrades
+        .map((t) => t.mtOrderId)
+        .filter((id): id is string => !!id && !id.startsWith('mock-')),
+    );
+
+    // Orphans: in MT5 but not in DB.
+    const orphans = mtPositions.filter(
+      (p) => p && p.ticket && !dbTicketSet.has(String(p.ticket)),
+    );
+
+    const now = Date.now();
+    const currentOrphanTickets = new Set<string>();
+    const unadopted: any[] = [];
+
+    for (const orphan of orphans) {
+      const ticket = String(orphan.ticket);
+      currentOrphanTickets.add(ticket);
+      const firstSeen = this.firstSeenOrphan.get(ticket) ?? now;
+      if (!this.firstSeenOrphan.has(ticket)) {
+        this.firstSeenOrphan.set(ticket, now);
+      }
+
+      // Hold off adoption until the orphan has been visible long enough
+      // that it's not just the race between MT5 order_send and the
+      // /trades/open DB insert.
+      if (now - firstSeen < MetatraderService.ORPHAN_ADOPT_DELAY_MS) {
+        unadopted.push(orphan);
+        continue;
+      }
+
+      const adopted = await this.adoptOrphanPosition(orphan);
+      if (!adopted) {
+        unadopted.push(orphan);
+      } else {
+        this.firstSeenOrphan.delete(ticket);
+      }
+    }
+
+    // Drop first-seen entries for tickets that are no longer orphans
+    // (either closed in MT5 or now matched in the DB).
+    for (const ticket of Array.from(this.firstSeenOrphan.keys())) {
+      if (!currentOrphanTickets.has(ticket)) {
+        this.firstSeenOrphan.delete(ticket);
+      }
+    }
+
+    if (unadopted.length > 0) {
+      this.logger.warn(
+        `MT5 reconciliation: ${unadopted.length} unadopted orphan position(s) — ` +
+          unadopted.map((o) => `${o.ticket}/${o.symbol}`).join(', '),
+      );
+    }
+    // Always emit (even when empty) so the admin UI clears stale banners.
+    this.wsGateway.emitAdminOrphanPositions(unadopted);
+
+    // Ghosts: in DB as OPEN but the ticket no longer exists in MT5.
+    // Bridge already emits `status: CLOSED` for tickets it subscribed to,
+    // but that only covers tickets the backend explicitly subscribed to.
+    // The reconciliation here is the safety net.
+    const mtTicketSet = new Set(
+      mtPositions.map((p) => String(p?.ticket)).filter(Boolean),
+    );
+    const ghosts = openTrades.filter(
+      (t) =>
+        t.mtOrderId &&
+        !t.mtOrderId.startsWith('mock-') &&
+        !mtTicketSet.has(t.mtOrderId),
+    );
+    for (const ghost of ghosts) {
+      try {
+        await this.prisma.trade.update({
+          where: { id: ghost.id },
+          data: { status: 'CLOSED', closedAt: new Date() },
+        });
+        this.logger.warn(
+          `Reconciled ghost trade ${ghost.id} (mtOrderId=${ghost.mtOrderId}) — closed in DB to match MT5`,
+        );
+        this.wsGateway.emitTradePnl(ghost.id, {
+          tradeId: ghost.id,
+          status: 'CLOSED_ON_MT5',
+          unrealizedPnl: 0,
+          mtProfit: 0,
+          timestamp: Date.now(),
+        });
+      } catch (err) {
+        this.logger.error(
+          `Failed to reconcile ghost trade ${ghost.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Adopt an MT5 orphan into the DB as a Trade row under the system user.
+   * Returns true if a row was created; false if the position couldn't be
+   * matched to a Symbol row (in which case the caller keeps the alert).
+   */
+  private async adoptOrphanPosition(orphan: {
+    ticket: string;
+    symbol?: string;
+    type?: string;
+    volume?: number;
+    open_price?: number;
+    current_price?: number;
+  }): Promise<boolean> {
+    const mtSymbol = orphan.symbol;
+    if (!mtSymbol) return false;
+
+    const symbol = await this.prisma.symbol.findFirst({
+      where: { mtSymbol, isDeleted: false },
+      orderBy: { isTradable: 'desc' },
+      select: { id: true, lotSize: true },
+    });
+    if (!symbol) return false;
+
+    const userId = await this.ensureSystemUserId();
+    if (!userId) return false;
+
+    // Defensive: another path may have inserted while we were waiting.
+    const existing = await this.prisma.trade.findFirst({
+      where: { mtOrderId: String(orphan.ticket) },
+      select: { id: true },
+    });
+    if (existing) return true;
+
+    const tradeType = (orphan.type ?? 'BUY').toUpperCase() === 'SELL' ? 'SELL' : 'BUY';
+    const lotSize = orphan.volume ?? Number(symbol.lotSize) ?? 0;
+    const openPrice = orphan.open_price ?? 0;
+
+    try {
+      const trade = await this.prisma.trade.create({
+        data: {
+          userId,
+          symbolId: symbol.id,
+          type: tradeType,
+          status: 'OPEN',
+          lotSize,
+          openPrice,
+          customerPrice: 0,
+          commission: 0,
+          mtOrderId: String(orphan.ticket),
+        },
+        include: {
+          user: { select: { phone: true, firstName: true, lastName: true } },
+          symbol: { select: { displayName: true, name: true, mtSymbol: true } },
+        },
+      });
+      this.logger.warn(
+        `Adopted orphan MT5 position ${orphan.ticket} (${mtSymbol}) into Trade ${trade.id} under __system__ user`,
+      );
+      this.wsGateway.emitAdminTradeOpened(trade);
+      this.subscribePositionTicket(String(orphan.ticket));
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `Failed to adopt orphan ${orphan.ticket}: ${(err as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Returns the id of the `__system__` user, creating it on first use.
+   * Used to attribute trades that exist in MT5 with no matching user
+   * (e.g. positions opened manually in the MT5 terminal). The system
+   * user is permanently inactive so it can never log in.
+   */
+  private async ensureSystemUserId(): Promise<string | null> {
+    if (this.systemUserId) return this.systemUserId;
+    try {
+      const user = await this.prisma.user.upsert({
+        where: { phone: '__system__' },
+        update: {},
+        create: {
+          phone: '__system__',
+          // Random unrecoverable password — login is also blocked by isActive=false.
+          password: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
+          firstName: 'MT5',
+          lastName: 'System',
+          role: 'USER',
+          isActive: false,
+        },
+        select: { id: true },
+      });
+      this.systemUserId = user.id;
+      return this.systemUserId;
+    } catch (err) {
+      this.logger.error(
+        `Failed to ensure __system__ user: ${(err as Error).message}`,
+      );
+      return null;
     }
   }
 

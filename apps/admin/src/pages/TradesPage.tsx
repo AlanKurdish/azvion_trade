@@ -39,6 +39,9 @@ export default function TradesPage() {
   const { t } = useTranslation();
   const [symbols, setSymbols] = useState<any[]>([]);
   const [mtPositions, setMtPositions] = useState<any[]>([]);
+  // Tickets present in MT5 but missing from the DB Trade table — these
+  // need an admin's attention because they aren't tied to any user.
+  const [orphanTickets, setOrphanTickets] = useState<Set<string>>(new Set());
   const [livePrices, setLivePrices] = useState<Record<string, LivePrice>>({});
   const [wsConnected, setWsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -111,6 +114,10 @@ export default function TradesPage() {
 
     socket.on('admin:mt:positions', (positions: any[]) => {
       setMtPositions(positions);
+    });
+
+    socket.on('admin:mt:orphan-positions', (orphans: any[]) => {
+      setOrphanTickets(new Set(orphans.map((o) => String(o.ticket))));
     });
 
     socket.on('admin:trade:pnl', (pnlData: any) => {
@@ -408,6 +415,12 @@ export default function TradesPage() {
       {/* MT5 Positions Tab */}
       {activeTab === 'mtPositions' && (
         <div>
+          {orphanTickets.size > 0 && (
+            <div className="mb-4 px-4 py-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-200 text-sm">
+              {orphanTickets.size} MT5 position(s) could not be adopted into Trades (no matching tradable symbol). Tickets:{' '}
+              <span className="font-mono">{Array.from(orphanTickets).join(', ')}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-400">{t('trades.openPositions', { count: mtPositions.length })}</span>
             <button onClick={loadMtPositions} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white">
@@ -435,8 +448,13 @@ export default function TradesPage() {
                 </thead>
                 <tbody>
                   {mtPositions.map((p: any) => (
-                    <tr key={p.ticket} className="border-b border-[#334155]/50 hover:bg-white/5">
-                      <td className="px-5 py-3 font-mono text-sm">{p.ticket}</td>
+                    <tr key={p.ticket} className={`border-b border-[#334155]/50 hover:bg-white/5 ${orphanTickets.has(String(p.ticket)) ? 'bg-amber-500/5' : ''}`}>
+                      <td className="px-5 py-3 font-mono text-sm">
+                        {p.ticket}
+                        {orphanTickets.has(String(p.ticket)) && (
+                          <span className="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-300 font-semibold">ORPHAN</span>
+                        )}
+                      </td>
                       <td className="px-5 py-3 font-semibold">{p.symbol}</td>
                       <td className="px-5 py-3">
                         <span className={`flex items-center gap-1 ${p.type === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>

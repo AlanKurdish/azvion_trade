@@ -39,6 +39,10 @@ position_task: Optional[asyncio.Task] = None
 # Track which position tickets each WS client wants to monitor
 position_subscribers: dict[WebSocket, set[str]] = {}
 
+# Last-known tick per symbol, so streaming continues during market closure.
+# Shape: { symbol: {"bid", "ask", "last", "time"} }
+last_tick_by_symbol: dict[str, dict] = {}
+
 
 # --- MT5 Connection ---
 def connect_mt5(login: int = None, password: str = None, server: str = None) -> dict:
@@ -75,6 +79,14 @@ def disconnect_mt5():
 
 # --- Price Streaming ---
 async def stream_prices():
+    """Streams a price for every subscribed symbol on every cycle.
+
+    When the market is open, fresh ticks from MT5 are emitted and cached.
+    When the market is closed (or MT5 returns no fresh tick), the last
+    cached tick is re-emitted so the downstream stream never stops. If we
+    have never seen a tick for a symbol, zeros are emitted with
+    trade_mode=0 so subscribers still receive a record for it.
+    """
     while True:
         if not connected or not streaming_symbols or not price_subscribers:
             await asyncio.sleep(0.5)
@@ -84,17 +96,51 @@ async def stream_prices():
         for symbol in list(streaming_symbols):
             tick = mt5.symbol_info_tick(symbol)
             info = mt5.symbol_info(symbol)
-            if tick:
-                # trade_mode: 0=disabled, 4=close_only → market closed for this symbol
-                trade_mode = info.trade_mode if info else 0
-                prices.append({
+            trade_mode = info.trade_mode if info else 0
+
+            if tick and (tick.bid or tick.ask):
+                entry = {
                     "symbol": symbol,
                     "bid": tick.bid,
                     "ask": tick.ask,
                     "last": tick.last,
                     "time": tick.time,
                     "trade_mode": trade_mode,
-                })
+                }
+                last_tick_by_symbol[symbol] = {
+                    "bid": tick.bid,
+                    "ask": tick.ask,
+                    "last": tick.last,
+                    "time": tick.time,
+                }
+            else:
+                # No fresh tick (market closed / disabled symbol). Re-emit
+                # the last cached value so subscribers keep receiving data.
+                cached = last_tick_by_symbol.get(symbol)
+                if cached:
+                    entry = {
+                        "symbol": symbol,
+                        "bid": cached["bid"],
+                        "ask": cached["ask"],
+                        "last": cached["last"],
+                        "time": cached["time"],
+                        "trade_mode": trade_mode,
+                        "stale": True,
+                    }
+                else:
+                    # Never seen a tick for this symbol — emit zeros so
+                    # the price stream is never silent for any subscribed
+                    # symbol.
+                    entry = {
+                        "symbol": symbol,
+                        "bid": 0.0,
+                        "ask": 0.0,
+                        "last": 0.0,
+                        "time": int(time.time()),
+                        "trade_mode": trade_mode,
+                        "stale": True,
+                    }
+            prices.append(entry)
 
         if prices:
             msg = json.dumps({"type": "prices", "data": prices})

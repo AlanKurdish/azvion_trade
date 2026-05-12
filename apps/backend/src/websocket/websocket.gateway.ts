@@ -197,6 +197,16 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.emitToAdmins('admin:mt:positions', positions);
   }
 
+  /**
+   * MT5 positions that have no matching Trade record in the DB.
+   * Surfaced so admins can spot trades that escaped the app's open-trade
+   * flow (e.g. opened manually in the MT5 terminal, or lost to a failed
+   * DB transaction after a successful MT5 order_send).
+   */
+  emitAdminOrphanPositions(orphans: any[]) {
+    this.emitToAdmins('admin:mt:orphan-positions', orphans);
+  }
+
   emitAdminPriceUpdate(prices: any[]) {
     this.emitToAdmins('admin:prices', prices);
   }

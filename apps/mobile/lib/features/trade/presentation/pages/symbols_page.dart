@@ -122,16 +122,11 @@ class _SymbolsPageState extends State<SymbolsPage> {
               final hasUncategorized = state.symbols.any((s) => s['categoryId'] == null);
               final filtered = _filterSymbols(state.symbols);
 
-              // Only show symbols whose market is open (tradeMode == 4).
-              // Symbols with no live price yet are kept visible while we wait
-              // for the first WebSocket tick.
-              final visible = filtered.where((sym) {
-                final lp = _livePrices[sym['id']?.toString() ?? '']
-                    ?? _livePrices[sym['mtSymbol']?.toString() ?? ''];
-                if (lp == null) return true; // waiting for first tick — keep visible
-                final tm = (lp['tradeMode'] as num?)?.toInt() ?? 4;
-                return tm == 4; // 4 = market open
-              }).toList();
+              // Show every symbol regardless of market state. The bridge
+              // keeps streaming the last known price when the market is
+              // closed, and the open/closed badge on the card makes the
+              // status clear to the user.
+              final visible = filtered;
 
               return Column(
                 children: [
@@ -163,7 +158,7 @@ class _SymbolsPageState extends State<SymbolsPage> {
                       ),
                     ),
 
-                  // Symbol list — market-open only
+                  // Symbol list — open + closed symbols, badge tells status
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: () async {
@@ -171,16 +166,9 @@ class _SymbolsPageState extends State<SymbolsPage> {
                       },
                       child: visible.isEmpty
                           ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.access_time, size: 48, color: Colors.grey[600]),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    t.tr('marketClosed'),
-                                    style: TextStyle(color: Colors.grey[500], fontSize: 15),
-                                  ),
-                                ],
+                              child: Text(
+                                t.tr('noSymbols'),
+                                style: const TextStyle(color: Colors.grey),
                               ),
                             )
                           : ListView.builder(
