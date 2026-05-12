@@ -57,8 +57,11 @@ class _AzinAppState extends State<AzinApp> {
       );
     }
 
-    // Show splash screen on every app launch
-    if (!_splashDone) {
+    // Show splash screen on every app launch.
+    // Splash stays up until both: animation done (2.8s) AND appConfig loaded —
+    // so we never fall through to the login page just because the demo-mode
+    // HTTP call is still in flight.
+    if (!_splashDone || !appConfig.isLoaded) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
@@ -66,20 +69,13 @@ class _AzinAppState extends State<AzinApp> {
       );
     }
 
-    // Show language selection on first launch
-    if (!languageProvider.hasChosenLanguage) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const LanguageSelectionPage(),
-      );
-    }
-
     final locale = languageProvider.locale;
     final isRtl = AppLocalizations.rtlLanguages.contains(locale.languageCode);
 
     // ---- Demo mode: bypass auth, show only prices + minimal profile ----
-    if (appConfig.isLoaded && appConfig.demoMode) {
+    // Checked BEFORE the language picker — demo users get a language switcher
+    // inside DemoProfilePage, so they don't need the upfront picker.
+    if (appConfig.demoMode) {
       return MaterialApp(
         title: 'Azin',
         debugShowCheckedModeBanner: false,
@@ -98,6 +94,16 @@ class _AzinAppState extends State<AzinApp> {
         home: const _DemoShell(),
       );
     }
+
+    // Non-demo, first launch: show language picker before auth shell.
+    if (!languageProvider.hasChosenLanguage) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        home: const LanguageSelectionPage(),
+      );
+    }
+
     return BlocProvider(
       create: (_) => sl<AuthBloc>()..add(AuthCheckStatus()),
       child: MaterialApp(
