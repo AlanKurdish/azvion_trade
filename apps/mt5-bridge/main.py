@@ -76,109 +76,151 @@ def disconnect_mt5():
 # --- Price Streaming ---
 async def stream_prices():
     while True:
-        if not connected or not streaming_symbols or not price_subscribers:
+        try:
+            if not connected or not streaming_symbols or not price_subscribers:
+                await asyncio.sleep(0.5)
+                continue
+
+            prices = []
+            for symbol in list(streaming_symbols):
+                tick = mt5.symbol_info_tick(symbol)
+                info = mt5.symbol_info(symbol)
+                if tick:
+                    # trade_mode: 0=disabled, 4=close_only → market closed for this symbol
+                    trade_mode = info.trade_mode if info else 0
+                    prices.append({
+                        "symbol": symbol,
+                        "bid": tick.bid,
+                        "ask": tick.ask,
+                        "last": tick.last,
+                        "time": tick.time,
+                        "trade_mode": trade_mode,
+                    })
+
+            if prices:
+                msg = json.dumps({"type": "prices", "data": prices})
+                dead = []
+                # iterate over a snapshot: other coroutines may mutate the list at awaits
+                for ws in list(price_subscribers):
+                    try:
+                        await ws.send_text(msg)
+                    except Exception:
+                        dead.append(ws)
+                for ws in dead:
+                    # guard: another coroutine (stream_positions / WS finally) may have
+                    # already removed this socket; an unguarded .remove() would raise
+                    # ValueError and permanently kill this task (freezing all prices).
+                    if ws in price_subscribers:
+                        price_subscribers.remove(ws)
+
+            await asyncio.sleep(0.3)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            # Never let a transient error kill the stream task — it would freeze
+            # every price in the app until the bridge is manually restarted.
+            print(f"stream_prices error (continuing): {e!r}")
             await asyncio.sleep(0.5)
-            continue
-
-        prices = []
-        for symbol in list(streaming_symbols):
-            tick = mt5.symbol_info_tick(symbol)
-            info = mt5.symbol_info(symbol)
-            if tick:
-                # trade_mode: 0=disabled, 4=close_only → market closed for this symbol
-                trade_mode = info.trade_mode if info else 0
-                prices.append({
-                    "symbol": symbol,
-                    "bid": tick.bid,
-                    "ask": tick.ask,
-                    "last": tick.last,
-                    "time": tick.time,
-                    "trade_mode": trade_mode,
-                })
-
-        if prices:
-            msg = json.dumps({"type": "prices", "data": prices})
-            dead = []
-            for ws in price_subscribers:
-                try:
-                    await ws.send_text(msg)
-                except Exception:
-                    dead.append(ws)
-            for ws in dead:
-                price_subscribers.remove(ws)
-
-        await asyncio.sleep(0.3)
 
 
 # --- Position Streaming ---
 async def stream_positions():
     """Polls MT5 positions and sends real profit/status to subscribers."""
     while True:
-        if not connected or not position_subscribers:
-            await asyncio.sleep(1)
-            continue
-
-        # Collect all tracked tickets across all subscribers
-        all_tracked = set()
-        for tickets in position_subscribers.values():
-            all_tracked.update(tickets)
-
-        if not all_tracked:
-            await asyncio.sleep(1)
-            continue
-
-        # Get all open positions from MT5
-        all_positions = mt5.positions_get()
-        pos_by_ticket = {}
-        if all_positions:
-            for p in all_positions:
-                pos_by_ticket[str(p.ticket)] = {
-                    "ticket": str(p.ticket),
-                    "symbol": p.symbol,
-                    "type": "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
-                    "volume": p.volume,
-                    "open_price": p.price_open,
-                    "current_price": p.price_current,
-                    "profit": p.profit,
-                    "swap": p.swap,
-                    "status": "OPEN",
-                }
-
-        # Send to each subscriber
-        dead = []
-        for ws, tickets in position_subscribers.items():
-            if not tickets:
+        try:
+            if not connected or not position_subscribers:
+                await asyncio.sleep(1)
                 continue
 
-            updates = []
-            for ticket in tickets:
-                if ticket in pos_by_ticket:
-                    updates.append(pos_by_ticket[ticket])
-                else:
-                    # Position no longer open in MT5 — it was closed
-                    updates.append({
-                        "ticket": ticket,
-                        "status": "CLOSED",
-                    })
+            # Collect all tracked tickets across all subscribers (snapshot the values)
+            all_tracked = set()
+            for tickets in list(position_subscribers.values()):
+                all_tracked.update(tickets)
 
-            if updates:
-                try:
-                    await ws.send_text(json.dumps({
-                        "type": "positions",
-                        "data": updates,
-                    }))
-                except Exception:
-                    dead.append(ws)
+            if not all_tracked:
+                await asyncio.sleep(1)
+                continue
 
-        for ws in dead:
-            position_subscribers.pop(ws, None)
-            if ws in price_subscribers:
-                price_subscribers.remove(ws)
+            # Get all open positions from MT5
+            all_positions = mt5.positions_get()
+            pos_by_ticket = {}
+            if all_positions:
+                for p in all_positions:
+                    pos_by_ticket[str(p.ticket)] = {
+                        "ticket": str(p.ticket),
+                        "symbol": p.symbol,
+                        "type": "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
+                        "volume": p.volume,
+                        "open_price": p.price_open,
+                        "current_price": p.price_current,
+                        "profit": p.profit,
+                        "swap": p.swap,
+                        "status": "OPEN",
+                    }
 
-        await asyncio.sleep(0.5)  # 2x per second
+            # Send to each subscriber. Iterate over a snapshot: other coroutines add/
+            # remove keys at awaits, which would otherwise raise "dictionary changed
+            # size during iteration" and permanently kill this task.
+            dead = []
+            for ws, tickets in list(position_subscribers.items()):
+                if not tickets:
+                    continue
+
+                updates = []
+                for ticket in tickets:
+                    if ticket in pos_by_ticket:
+                        updates.append(pos_by_ticket[ticket])
+                    else:
+                        # Position no longer open in MT5 — it was closed
+                        updates.append({
+                            "ticket": ticket,
+                            "status": "CLOSED",
+                        })
+
+                if updates:
+                    try:
+                        await ws.send_text(json.dumps({
+                            "type": "positions",
+                            "data": updates,
+                        }))
+                    except Exception:
+                        dead.append(ws)
+
+            for ws in dead:
+                position_subscribers.pop(ws, None)
+                if ws in price_subscribers:
+                    price_subscribers.remove(ws)
+
+            await asyncio.sleep(0.5)  # 2x per second
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            # Never let a transient error kill the task (would freeze position P&L).
+            print(f"stream_positions error (continuing): {e!r}")
+            await asyncio.sleep(0.5)
 
 
 # --- App ---
+_shutting_down = False
+
+
+def _supervise(coro_factory, name: str):
+    """Done-callback that restarts a background streaming task if it ever exits,
+    so a single unexpected error can never permanently freeze streaming."""
+    def _on_done(task: asyncio.Task):
+        if _shutting_down:
+            return
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError:
+            return
+        print(f"[{name}] task exited unexpectedly (exc={exc!r}) — restarting")
+        new_task = asyncio.create_task(coro_factory())
+        new_task.add_done_callback(_on_done)
+        globals()[name] = new_task
+    return _on_done
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global price_task, position_task
@@ -189,10 +231,14 @@ async def lifespan(app: FastAPI):
         print(f"MT5 not connected (will retry on /connect): {result.get('error')}")
 
     price_task = asyncio.create_task(stream_prices())
+    price_task.add_done_callback(_supervise(stream_prices, "price_task"))
     position_task = asyncio.create_task(stream_positions())
+    position_task.add_done_callback(_supervise(stream_positions, "position_task"))
 
     yield
 
+    global _shutting_down
+    _shutting_down = True
     if price_task:
         price_task.cancel()
     if position_task:
@@ -316,6 +362,19 @@ def get_price(symbol: str):
     }
 
 
+def pick_filling_mode(symbol: str) -> int:
+    """Return a filling mode the broker accepts for this symbol.
+    symbol_info.filling_mode is a bitmask: 1=FOK, 2=IOC. RETURN is allowed
+    on non-market-execution symbols regardless of the mask."""
+    info = mt5.symbol_info(symbol)
+    mask = getattr(info, "filling_mode", 0) if info else 0
+    if mask & 1:
+        return mt5.ORDER_FILLING_FOK
+    if mask & 2:
+        return mt5.ORDER_FILLING_IOC
+    return mt5.ORDER_FILLING_RETURN
+
+
 @app.post("/trade/open")
 def open_trade(req: TradeOpenRequest):
     if not connected:
@@ -342,7 +401,7 @@ def open_trade(req: TradeOpenRequest):
         "deviation": 20,
         "magic": 123456,
         "comment": safe_comment,
-        "type_filling": mt5.ORDER_FILLING_IOC,
+        "type_filling": pick_filling_mode(req.symbol),
     }
 
     result = mt5.order_send(request)
@@ -412,7 +471,7 @@ def close_trade(req: TradeCloseRequest):
         "deviation": 20,
         "magic": 123456,
         "comment": "close",
-        "type_filling": mt5.ORDER_FILLING_IOC,
+        "type_filling": pick_filling_mode(symbol),
     }
 
     result = mt5.order_send(request)
