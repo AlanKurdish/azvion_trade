@@ -79,7 +79,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
-    const socket = io('http://localhost:3000/ws', { auth: { token }, transports: ['websocket'] });
+    const socket = io('/ws', { auth: { token }, transports: ['websocket'] });
     socket.on('admin:trade:opened', () => loadStats());
     socket.on('admin:trade:closed', () => loadStats());
     return () => { socket.disconnect(); };

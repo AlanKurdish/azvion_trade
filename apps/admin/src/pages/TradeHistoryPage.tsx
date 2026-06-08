@@ -63,7 +63,7 @@ export default function TradeHistoryPage() {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
 
-    const socket: Socket = io('http://localhost:3000/ws', {
+    const socket: Socket = io('/ws', {
       auth: { token },
       transports: ['websocket'],
     });

@@ -40,7 +40,7 @@ export default function DashboardLayout() {
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
-    const socket = io('http://localhost:3000/ws', { auth: { token }, transports: ['websocket'] });
+    const socket = io('/ws', { auth: { token }, transports: ['websocket'] });
     socketRef.current = socket;
     socket.on('admin:online-users', (data: { count: number }) => {
       setOnlineCount(data.count);

@@ -89,7 +89,7 @@ export default function TradesPage() {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
 
-    const socket = io('http://localhost:3000/ws', {
+    const socket = io('/ws', {
       auth: { token },
       transports: ['websocket'],
     });
