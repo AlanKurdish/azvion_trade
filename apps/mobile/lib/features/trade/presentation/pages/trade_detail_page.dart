@@ -132,7 +132,9 @@ class _TradeDetailView extends StatelessWidget {
                           if (hasFormula || liveBid != null || liveAsk != null) ...[
                             Builder(builder: (ctx) {
                               final mid = liveFormulaPrice ?? liveAsk ?? liveBid ?? 0;
-                              final sellPrice = mid - commission;
+                              // Spread = commission (matches what the user pays
+                              // vs. what they'd get back closing immediately).
+                              final sellPrice = mid;
                               final buyPrice = mid + commission;
                               return Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

@@ -326,122 +326,103 @@ class _SymbolCard extends StatelessWidget {
             : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Icon ──────────────────────────────────────────────────
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD4AF37).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isReadOnly ? Icons.lock_outline : Icons.monetization_on,
-                  color: const Color(0xFFD4AF37),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // ── Name + subtitle (takes all remaining space) ───────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Name + status badge on same line
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isReadOnly) ...[
-                          const SizedBox(width: 5),
-                          _Badge(label: t.tr('readOnly'), color: Colors.amber),
-                        ] else if (tradeMode != null) ...[
-                          const SizedBox(width: 5),
-                          _Badge(
-                            label: isSymbolOpen ? t.tr('open') : t.tr('closed'),
-                            color: isSymbolOpen ? Colors.green : Colors.red,
-                          ),
-                        ],
-                      ],
+              // ── Row 1: icon + name (fully visible) + status badge ─────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD4AF37).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        style: TextStyle(color: Colors.grey[500], fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    child: Icon(
+                      isReadOnly ? Icons.lock_outline : Icons.monetization_on,
+                      color: const Color(0xFFD4AF37),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  // Name — allowed to wrap to 2 lines so long Arabic/Kurdish
+                  // names stay fully readable.
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        height: 1.2,
                       ),
-                    ],
-                    // Waiting indicator inline under the subtitle
-                    if (livePrice == null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 5, height: 5,
-                            decoration: const BoxDecoration(
-                              color: Colors.orange, shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            t.tr('waitingPrice'),
-                            style: TextStyle(color: Colors.grey[500], fontSize: 10),
-                          ),
-                        ],
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  if (isReadOnly)
+                    _Badge(label: t.tr('readOnly'), color: Colors.amber)
+                  else if (tradeMode != null)
+                    _Badge(
+                      label: isSymbolOpen ? t.tr('open') : t.tr('closed'),
+                      color: isSymbolOpen ? Colors.green : Colors.red,
+                    ),
+                ],
+              ),
+
+              // ── Subtitle (amount label) ──────────────────────────────
+              if (subtitle.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 49, top: 4),
+                  child: Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+
+              const SizedBox(height: 10),
+
+              // ── Row 2: SELL and BUY side by side, full card width ────
+              if (hasPrice)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PriceRow(
+                        label: t.tr('sell'),
+                        value: formatPrice(formulaPrice!),
+                        color: Colors.red,
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _PriceRow(
+                        label: t.tr('buy'),
+                        value: formatPrice(formulaPrice! + _commission),
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Container(
+                      width: 5, height: 5,
+                      decoration: const BoxDecoration(
+                        color: Colors.orange, shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      t.tr('waitingPrice'),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-
-              // ── Sell / Buy prices (fixed width — never overlaps name) ──
-              SizedBox(
-                width: 118,
-                child: hasPrice
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _PriceRow(
-                            label: t.tr('sell'),
-                            value: formatPrice(formulaPrice! - _commission),
-                            color: Colors.red,
-                          ),
-                          const SizedBox(height: 4),
-                          _PriceRow(
-                            label: t.tr('buy'),
-                            value: formatPrice(formulaPrice! + _commission),
-                            color: Colors.green,
-                          ),
-                        ],
-                      )
-                    : Text(
-                        '—',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.grey[600] : Colors.grey[400],
-                        ),
-                        textAlign: TextAlign.end,
-                      ),
-              ),
             ],
           ),
         ),
@@ -472,7 +453,8 @@ class _Badge extends StatelessWidget {
   }
 }
 
-/// One row of the dual-price display: SELL/BUY label tag + price value.
+/// One side of the dual-price display: SELL or BUY pill + price value.
+/// Used inside Expanded() so each side gets half the card width.
 class _PriceRow extends StatelessWidget {
   final String label;
   final String value;
@@ -481,44 +463,48 @@ class _PriceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Small uppercase label pill (SELL / BUY)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-              color: color,
-              letterSpacing: 0.5,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: color,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontFamily: 'monospace',
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: color,
+                fontFamily: 'monospace',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.end,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
