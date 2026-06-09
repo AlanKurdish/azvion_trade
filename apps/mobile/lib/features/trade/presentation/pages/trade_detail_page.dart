@@ -128,30 +128,42 @@ class _TradeDetailView extends StatelessWidget {
                           Text(mtSymbol, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                           const SizedBox(height: 16),
 
-                          // Live price display — formula result only
+                          // Live price display — SELL + BUY side by side
                           if (hasFormula || liveBid != null || liveAsk != null) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(AppLocalizations.of(context).tr('livePrice'), style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    formatPrice(liveFormulaPrice ?? liveAsk ?? liveBid ?? 0),
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFD4AF37),
-                                      fontFamily: 'monospace',
+                            Builder(builder: (ctx) {
+                              final mid = liveFormulaPrice ?? liveAsk ?? liveBid ?? 0;
+                              final sellPrice = mid - commission;
+                              final buyPrice = mid + commission;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _BigPrice(
+                                        label: AppLocalizations.of(context).tr('sell'),
+                                        value: formatPrice(sellPrice),
+                                        color: Colors.red,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    Container(
+                                      width: 1, height: 50,
+                                      color: Colors.grey.withValues(alpha: 0.25),
+                                    ),
+                                    Expanded(
+                                      child: _BigPrice(
+                                        label: AppLocalizations.of(context).tr('buy'),
+                                        value: formatPrice(buyPrice),
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                           ] else
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -268,6 +280,48 @@ class _TradeDetailView extends StatelessWidget {
           Text(value, style: valueStyle ?? const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
+    );
+  }
+}
+
+/// SELL / BUY price column used in the big live-price card on TradeDetailPage.
+class _BigPrice extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _BigPrice({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: color,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ],
     );
   }
 }
