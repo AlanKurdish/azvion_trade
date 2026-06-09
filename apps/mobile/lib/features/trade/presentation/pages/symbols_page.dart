@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../bloc/symbols_bloc.dart';
 import 'trade_detail_page.dart';
 import '../../../../core/di/injection.dart';
@@ -22,10 +23,14 @@ class _SymbolsPageState extends State<SymbolsPage> {
   List<String> _subscribedSymbols = [];
   // Selected category id — empty string = All; 'uncat' = symbols with no category
   String _selectedCategoryId = '';
+  // Cached user role so the buy/sell prices show the role-correct commission.
+  // Defaults to USER for guests; loaded once from secure storage on init.
+  String _userRole = 'USER';
 
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _priceSub = _wsClient.on('price:update').listen((data) {
       if (data is Map<String, dynamic> && data['symbol'] != null) {
         // Key by symbolId if available (formula prices), otherwise by mtSymbol
@@ -35,6 +40,14 @@ class _SymbolsPageState extends State<SymbolsPage> {
         });
       }
     });
+  }
+
+  Future<void> _loadUserRole() async {
+    const storage = FlutterSecureStorage();
+    final role = await storage.read(key: 'user_role');
+    if (role != null && mounted) {
+      setState(() => _userRole = role);
+    }
   }
 
   void _subscribeToSymbols(List<dynamic> symbols) {
@@ -194,6 +207,7 @@ class _SymbolsPageState extends State<SymbolsPage> {
                                   symbol: sym,
                                   livePrice: livePrice,
                                   isLoggedIn: _isLoggedIn,
+                                  userRole: _userRole,
                                 );
                               },
                             ),
@@ -253,8 +267,23 @@ class _SymbolCard extends StatelessWidget {
   final Map<String, dynamic> symbol;
   final Map<String, dynamic>? livePrice;
   final bool isLoggedIn;
+  final String userRole;
 
-  const _SymbolCard({required this.symbol, this.livePrice, required this.isLoggedIn});
+  const _SymbolCard({
+    required this.symbol,
+    this.livePrice,
+    required this.isLoggedIn,
+    this.userRole = 'USER',
+  });
+
+  /// Pick the role-correct commission, falling back to legacy `commission`.
+  double get _commission {
+    final fromRole = userRole == 'SHOP'
+        ? double.tryParse((symbol['commissionShop'] ?? 0).toString()) ?? 0
+        : double.tryParse((symbol['commissionUser'] ?? 0).toString()) ?? 0;
+    if (fromRole > 0) return fromRole;
+    return double.tryParse((symbol['commission'] ?? 0).toString()) ?? 0;
+  }
 
   /// Smart decimal formatting based on price magnitude
   String formatPrice(double price) {
@@ -382,43 +411,28 @@ class _SymbolCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
 
-              // ── Price (fixed width so it never overlaps the name) ─────
+              // ── Sell / Buy prices (fixed width — never overlaps name) ──
               SizedBox(
-                width: 96,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (hasPrice) ...[
-                      Row(
+                width: 118,
+                child: hasPrice
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Container(
-                            width: 6, height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.green, shape: BoxShape.circle,
-                            ),
+                          _PriceRow(
+                            label: t.tr('sell'),
+                            value: formatPrice(formulaPrice! - _commission),
+                            color: Colors.red,
                           ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              formatPrice(formulaPrice!),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFD4AF37),
-                                fontFamily: 'monospace',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
-                            ),
+                          const SizedBox(height: 4),
+                          _PriceRow(
+                            label: t.tr('buy'),
+                            value: formatPrice(formulaPrice! + _commission),
+                            color: Colors.green,
                           ),
                         ],
-                      ),
-                    ] else ...[
-                      Text(
+                      )
+                    : Text(
                         '—',
                         style: TextStyle(
                           fontSize: 16,
@@ -427,9 +441,6 @@ class _SymbolCard extends StatelessWidget {
                         ),
                         textAlign: TextAlign.end,
                       ),
-                    ],
-                  ],
-                ),
               ),
             ],
           ),
@@ -457,6 +468,57 @@ class _Badge extends StatelessWidget {
         label,
         style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
       ),
+    );
+  }
+}
+
+/// One row of the dual-price display: SELL/BUY label tag + price value.
+class _PriceRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _PriceRow({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Small uppercase label pill (SELL / BUY)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontFamily: 'monospace',
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+          ),
+        ),
+      ],
     );
   }
 }

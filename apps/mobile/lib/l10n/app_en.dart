@@ -45,6 +45,7 @@ const Map<String, String> en = {
 
   // Trade Detail
   'buy': 'Buy',
+  'sell': 'Sell',
   'openingTrade': 'Opening Trade...',
   'amount': 'Amount',
   'price': 'Price',

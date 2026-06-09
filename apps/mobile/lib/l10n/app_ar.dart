@@ -45,6 +45,7 @@ const Map<String, String> ar = {
 
   // Trade Detail
   'buy': 'شراء',
+  'sell': 'بيع',
   'openingTrade': 'فتح الصفقة...',
   'amount': 'الكمية',
   'price': 'السعر',

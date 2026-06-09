@@ -45,6 +45,7 @@ const Map<String, String> ckb = {
 
   // Trade Detail
   'buy': 'کڕین',
+  'sell': 'فرۆشتن',
   'openingTrade': 'کردنەوەی مامەڵە...',
   'amount': 'بڕ',
   'price': 'نرخ',
