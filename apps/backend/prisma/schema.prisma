@@ -129,6 +129,10 @@ model Trade {
   customerClosePrice Decimal? @map("customer_close_price") @db.Decimal(18, 2)
   customerPrice Decimal     @default(0) @map("customer_price") @db.Decimal(18, 2)
   commission    Decimal     @default(0) @db.Decimal(18, 2)
+  // Amount actually debited from the user's balance when the trade was opened.
+  // New model: 0 (opening no longer touches the balance — the fee is baked into P/L).
+  // Legacy open trades: customerPrice (so closing still returns their escrow).
+  openDebit     Decimal     @default(0) @map("open_debit") @db.Decimal(18, 2)
   profitLoss  Decimal?    @map("profit_loss") @db.Decimal(18, 2)
   mtOrderId   String?     @map("mt_order_id")
   mtAccountId String?     @map("mt_account_id")

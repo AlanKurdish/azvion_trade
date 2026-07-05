@@ -356,7 +356,7 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
       try {
         const trade = await this.prisma.trade.findFirst({
           where: { mtOrderId: pos.ticket, status: 'OPEN' },
-          select: { id: true, userId: true },
+          select: { id: true, userId: true, commission: true },
         });
 
         if (!trade) continue;
@@ -366,6 +366,7 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
             tradeId: trade.id,
             currentPrice: 0,
             unrealizedPnl: 0,
+            netPnl: 0,
             mtProfit: 0,
             status: 'CLOSED_ON_MT5',
             timestamp: Date.now(),
@@ -373,12 +374,19 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
-        // Stream real MT5 profit to both trade room and user room
+        // Bake the fee into the user-facing P/L: the trade is shown at
+        // (real MT5 profit − fee), so it starts at −fee and stays fee-adjusted.
+        // `mtProfit` stays the raw broker number (the admin app reads it).
+        const fee = Number(trade.commission ?? 0);
+        const rawProfit = pos.profit ?? 0;
+        const netPnl = rawProfit - fee;
         const pnlData = {
           tradeId: trade.id,
           currentPrice: pos.current_price ?? 0,
-          unrealizedPnl: pos.profit ?? 0,
-          mtProfit: pos.profit ?? 0,
+          unrealizedPnl: netPnl,
+          netPnl,
+          fee,
+          mtProfit: rawProfit,
           swap: pos.swap ?? 0,
           openPrice: pos.open_price,
           timestamp: Date.now(),
@@ -419,7 +427,7 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
     try {
       const openTrades = await this.prisma.trade.findMany({
         where: { status: 'OPEN', mtOrderId: { not: null } },
-        select: { id: true, userId: true, mtOrderId: true },
+        select: { id: true, userId: true, mtOrderId: true, commission: true },
       });
 
       if (openTrades.length === 0) return;
@@ -435,11 +443,17 @@ export class MetatraderService implements OnModuleInit, OnModuleDestroy {
 
         const mtPos = posMap.get(trade.mtOrderId);
         if (mtPos) {
+          // Fee baked into the user-facing P/L (see handlePositionUpdate).
+          const fee = Number(trade.commission ?? 0);
+          const rawProfit = mtPos.profit ?? 0;
+          const netPnl = rawProfit - fee;
           const pnlData = {
             tradeId: trade.id,
             currentPrice: mtPos.current_price,
-            unrealizedPnl: mtPos.profit,
-            mtProfit: mtPos.profit,
+            unrealizedPnl: netPnl,
+            netPnl,
+            fee,
+            mtProfit: rawProfit,
             swap: mtPos.swap ?? 0,
             timestamp: Date.now(),
           };

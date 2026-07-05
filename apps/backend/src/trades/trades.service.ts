@@ -101,15 +101,18 @@ export class TradesService {
       formulaPrice = liveAsk;
     }
 
-    // Role-based commission: commission is folded INTO the customer price
-    // so the user sees a single "buy with $X" number that already includes it.
+    // Role-based fee for this user.
     const effectiveCommission = this.commissionFor(symbol, user?.role ?? 'USER');
-    const customerBuyPrice = formulaPrice + effectiveCommission; // what the user is charged
-    const totalCost = customerBuyPrice; // single line on their balance
+    // customerBuyPrice is kept ONLY for display (the "buy price" shown in the app).
+    const customerBuyPrice = formulaPrice + effectiveCommission;
 
-    if (Number(balance.amount) < totalCost) {
+    // NEW MODEL: opening a trade no longer debits the balance. The fee is baked
+    // into the position's P/L instead — the trade starts at -fee and the live /
+    // realized P/L is always (real MT5 P/L - fee). We still require the user to be
+    // able to cover the entry fee so they can't open straight into a negative balance.
+    if (Number(balance.amount) < effectiveCommission) {
       throw new BadRequestException(
-        `Insufficient balance. Required: $${totalCost.toFixed(2)}, Available: $${Number(balance.amount).toFixed(2)}`,
+        `Insufficient balance to cover the $${effectiveCommission.toFixed(2)} fee. Available: $${Number(balance.amount).toFixed(2)}`,
       );
     }
 
@@ -137,65 +140,33 @@ export class TradesService {
       throw new BadRequestException(`Failed to open trade on MetaTrader: ${msg}`);
     }
 
-    // Step 2: Record everything in DB transaction
-    const trade = await this.prisma.$transaction(async (tx) => {
-      // Re-check balance inside transaction (race condition guard)
-      const currentBalance = await tx.balance.findUnique({
-        where: { userId },
-      });
-      if (!currentBalance || Number(currentBalance.amount) < totalCost) {
-        throw new BadRequestException('Insufficient balance');
-      }
-
-      // Deduct balance
-      await tx.balance.update({
-        where: { userId },
-        data: { amount: { decrement: totalCost } },
-      });
-
-      // Create trade record
-      // customerPrice = the *full* amount the user paid (formula price + commission).
-      // commission is stored separately so we can subtract it again on close.
-      const newTrade = await tx.trade.create({
-        data: {
-          userId,
-          symbolId,
-          type: 'BUY',
-          lotSize: symbol.lotSize,
-          openPrice: mtOpenPrice ?? liveAsk,
-          openBid: liveBid,
-          openAsk: liveAsk,
-          customerPrice: customerBuyPrice,
-          commission: effectiveCommission,
-          mtOrderId,
-        },
-        include: {
-          symbol: { select: { displayName: true, mtSymbol: true } },
-        },
-      });
-
-      // Single transaction line — user only ever sees one debit, no commission row.
-      await tx.transaction.create({
-        data: {
-          userId,
-          type: 'TRADE_OPEN',
-          amount: new Prisma.Decimal(-customerBuyPrice),
-          tradeId: newTrade.id,
-          note: `Buy ${symbol.displayName} @ $${customerBuyPrice.toFixed(2)}`,
-        },
-      });
-
-      return newTrade;
+    // Step 2: Record the trade. NO balance movement on open — `openDebit = 0`
+    // marks this as a new-model trade so close() knows not to return any escrow.
+    // customerPrice/commission are still stored for display and for subtracting
+    // the fee from the live & realized P/L.
+    const trade = await this.prisma.trade.create({
+      data: {
+        userId,
+        symbolId,
+        type: 'BUY',
+        lotSize: symbol.lotSize,
+        openPrice: mtOpenPrice ?? liveAsk,
+        openBid: liveBid,
+        openAsk: liveAsk,
+        customerPrice: customerBuyPrice,
+        commission: effectiveCommission,
+        openDebit: 0,
+        mtOrderId,
+      },
+      include: {
+        symbol: { select: { displayName: true, mtSymbol: true } },
+      },
     });
 
     // Step 3: Notify via WebSocket
     console.log(`[TRADE] Emitting trade:opened to user:${userId}`);
     this.wsGateway.emitToUser(userId, 'trade:opened', trade);
     this.wsGateway.emitAdminTradeOpened(trade);
-
-    // Also emit balance update so app refreshes balance
-    const updatedBalance = await this.prisma.balance.findUnique({ where: { userId } });
-    this.wsGateway.emitToUser(userId, 'balance:updated', { balance: updatedBalance?.amount });
 
     return trade;
   }
@@ -227,8 +198,10 @@ export class TradesService {
       );
     }
 
-    // Use MT5's actual profit (includes contract size, currency conversion, swap)
-    const profitLoss = mtProfit;
+    // NEW MODEL: the realized result is (real MT5 P/L − fee). That net number is
+    // what we store and show everywhere.
+    const commissionPaid = Number(trade.commission);
+    const profitLoss = mtProfit - commissionPaid;
 
     // Compute formula close price for user display
     let customerClosePrice: number | null = null;
@@ -258,11 +231,10 @@ export class TradesService {
         },
       });
 
-      // Credit balance: customerPrice (which already included commission on open)
-      // + P/L − commission. Net effect: user gains/loses (P/L − commission).
-      const deductedPrice = Number(trade.customerPrice);
-      const commissionPaid = Number(trade.commission);
-      const creditAmount = deductedPrice + profitLoss - commissionPaid;
+      // Credit = whatever was escrowed on open (0 for new-model trades, the
+      // customerPrice for legacy ones) + the net result (P/L − fee).
+      const openDebit = Number(trade.openDebit);
+      const creditAmount = openDebit + profitLoss;
       await tx.balance.update({
         where: { userId },
         data: { amount: { increment: creditAmount } },
@@ -428,8 +400,9 @@ export class TradesService {
       );
     }
 
-    // Use MT5's actual profit
-    const profitLoss = mtProfit;
+    // NEW MODEL: realized result = real MT5 P/L − fee.
+    const commissionPaid = Number(trade.commission);
+    const profitLoss = mtProfit - commissionPaid;
 
     // Compute formula close price for user display
     let customerClosePrice: number | null = null;
@@ -459,10 +432,9 @@ export class TradesService {
         },
       });
 
-      // Credit balance: customerPrice (already includes commission) + P/L − commission
-      const deductedPrice = Number(trade.customerPrice);
-      const commissionPaid = Number(trade.commission);
-      const creditAmount = deductedPrice + profitLoss - commissionPaid;
+      // Credit = escrow returned on open (0 for new-model trades) + net result (P/L − fee).
+      const openDebit = Number(trade.openDebit);
+      const creditAmount = openDebit + profitLoss;
       await tx.balance.update({
         where: { userId: trade.userId },
         data: { amount: { increment: creditAmount } },
