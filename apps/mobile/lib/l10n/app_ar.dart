@@ -77,6 +77,7 @@ const Map<String, String> ar = {
   'subscriptionExpires': 'ينتهي خلال',
   'subscribePrice': 'اشترك بمبلغ',
   'noPosts': 'لا توجد منشورات بعد',
+  'postsLoadError': 'تعذّر تحميل المنشورات. تحقّق من اتصالك وحاول مرة أخرى.',
   'navBlog': 'المدونة',
   'bonusBalance': 'مكافأة البطاقات',
   'viewPositions': 'عرض وإدارة الصفقات المفتوحة في تبويب الصفقات',

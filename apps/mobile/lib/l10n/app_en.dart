@@ -77,6 +77,7 @@ const Map<String, String> en = {
   'subscriptionExpires': 'Expires in',
   'subscribePrice': 'Subscribe for',
   'noPosts': 'No posts yet',
+  'postsLoadError': 'Couldn\'t load posts. Check your connection and try again.',
   'navBlog': 'Blog',
   'bonusBalance': 'Bonus from cards',
   'viewPositions': 'View & manage open positions in the Positions tab',

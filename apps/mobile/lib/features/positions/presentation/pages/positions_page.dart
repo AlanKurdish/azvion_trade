@@ -15,6 +15,24 @@ String _formatPrice(double price) {
   return price.toStringAsFixed(5);
 }
 
+/// The fee for a trade (already resolved per-role on the backend and stored
+/// on the trade record).
+double _feeFor(dynamic trade) =>
+    double.tryParse(trade['commission']?.toString() ?? '0') ?? 0;
+
+/// Fee-adjusted live P/L for an open position: (real MT5 P/L − fee).
+/// Before the first live tick arrives the position simply shows −fee, so the
+/// trade visibly "starts in minus fee".
+double _netPnlFor(dynamic trade, Map<String, dynamic>? pnl) {
+  final fee = _feeFor(trade);
+  // Backend already sends the net value; fall back to raw−fee, then to −fee.
+  final net = (pnl?['netPnl'] as num?)?.toDouble();
+  if (net != null) return net;
+  final raw = (pnl?['mtProfit'] as num?)?.toDouble();
+  if (raw != null) return raw - fee;
+  return -fee;
+}
+
 class PositionsPage extends StatelessWidget {
   const PositionsPage({super.key});
 
@@ -123,14 +141,13 @@ class _OpenPositionsTab extends StatelessWidget {
             );
           }
 
-          // Calculate total P&L
+          // Calculate total P&L — fee-adjusted (real P/L − fee). Each position
+          // starts at −fee, so even before the first live tick the total reflects
+          // the fees already "charged" inside the open positions.
           double totalPnl = 0;
           for (final trade in state.positions) {
             final tradeId = trade['id']?.toString() ?? '';
-            final pnl = state.livePnl[tradeId];
-            if (pnl != null) {
-              totalPnl += (pnl['mtProfit'] as num?)?.toDouble() ?? 0;
-            }
+            totalPnl += _netPnlFor(trade, state.livePnl[tradeId]);
           }
 
           return Column(
@@ -206,9 +223,10 @@ class _TradeCard extends StatelessWidget {
     final lotSize = trade['lotSize']?.toString() ?? '-';
     final isClosing = state.closingTradeId == tradeId;
 
-    // Live P&L from WebSocket
+    // Live P&L from WebSocket — fee-adjusted (real P/L − fee). Starts at −fee
+    // before the first tick so the trade opens "in minus fee".
     final pnl = state.livePnl[tradeId];
-    final unrealizedPnl = (pnl?['mtProfit'] as num?)?.toDouble();
+    final unrealizedPnl = _netPnlFor(trade, pnl);
 
     // Live formula price: lookup by symbolId first, then mtSymbol
     final livePrice = state.livePrices[symbolId] ?? state.livePrices[mtSymbol];
@@ -216,7 +234,7 @@ class _TradeCard extends StatelessWidget {
     final displayCurrentPrice = liveFormulaPrice;
 
     final isBuy = type == 'BUY';
-    final pnlColor = (unrealizedPnl ?? 0) >= 0 ? Colors.green : Colors.red;
+    final pnlColor = unrealizedPnl >= 0 ? Colors.green : Colors.red;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
@@ -288,9 +306,7 @@ class _TradeCard extends StatelessWidget {
                     children: [
                       Text(t.tr('pnl'), style: const TextStyle(color: Colors.grey, fontSize: 10)),
                       Text(
-                        unrealizedPnl != null
-                            ? '${unrealizedPnl >= 0 ? '+' : ''}\$${unrealizedPnl.toStringAsFixed(2)}'
-                            : '-',
+                        '${unrealizedPnl >= 0 ? '+' : ''}\$${unrealizedPnl.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,

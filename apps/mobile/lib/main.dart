@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_bloc/flutter_bloc.dart';
 // flutter_localizations imported via app_localizations.dart
 import 'core/config/app_config.dart';
@@ -18,8 +20,25 @@ import 'l10n/language_provider.dart';
 final languageProvider = LanguageProvider();
 final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
+/// DEBUG-ONLY: some dev machines run antivirus (e.g. Norton "Web/Mail Shield")
+/// that intercepts HTTPS and re-signs certificates with a local root CA the
+/// Android emulator doesn't trust — causing CERTIFICATE_VERIFY_FAILED. Accepting
+/// those lets the app be tested on an emulator behind such a proxy. This class
+/// is only ever installed under `kDebugMode`, so release/Play Store builds keep
+/// full certificate verification.
+class _DevHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (cert, host, port) => true;
+  }
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kDebugMode) {
+    HttpOverrides.global = _DevHttpOverrides();
+  }
   initDependencies();
   // Fire-and-forget config load — UI waits on `appConfig.isLoaded` below
   appConfig.load();
@@ -148,7 +167,7 @@ class _GuestShell extends StatefulWidget {
 }
 
 class _GuestShellState extends State<_GuestShell> with WidgetsBindingObserver {
-  int _index = 1; // Start on login tab
+  int _index = 0; // Start on the symbols/prices list (login is the 2nd tab)
   final WebSocketClient _ws = sl<WebSocketClient>();
 
   @override

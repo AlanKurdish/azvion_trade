@@ -77,6 +77,7 @@ const Map<String, String> ckb = {
   'subscriptionExpires': 'کۆتایی دێت لە',
   'subscribePrice': 'بەشدار بە بە',
   'noPosts': 'هیچ پۆستێک نییە',
+  'postsLoadError': 'نەتوانرا پۆستەکان باربکرێن. پەیوەندیت بپشکنە و دووبارە هەوڵبدەوە.',
   'navBlog': 'بلۆگ',
   'bonusBalance': 'پاداشت لە کارتەکان',
   'viewPositions': 'بینین و بەڕێوەبردنی مامەڵە کراوەکان لە تابی مامەڵەکان',

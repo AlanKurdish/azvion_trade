@@ -20,7 +20,9 @@ class MainShell extends StatefulWidget {
 }
 
 class MainShellState extends State<MainShell> with WidgetsBindingObserver {
-  int _currentIndex = 0;
+  // Land on the Trade tab (symbols list) so the first thing every user sees —
+  // authenticated or not — is the list of symbols. Index 1 = SymbolsPage.
+  int _currentIndex = 1;
   final WebSocketClient _wsClient = sl<WebSocketClient>();
   StreamSubscription? _tradeOpenedSub;
   StreamSubscription? _tradeClosedSub;
