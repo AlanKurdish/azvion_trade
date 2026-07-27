@@ -106,13 +106,28 @@ export class TradesService {
     // customerBuyPrice is kept ONLY for display (the "buy price" shown in the app).
     const customerBuyPrice = formulaPrice + effectiveCommission;
 
-    // NEW MODEL: opening a trade no longer debits the balance. The fee is baked
-    // into the position's P/L instead — the trade starts at -fee and the live /
-    // realized P/L is always (real MT5 P/L - fee). We still require the user to be
-    // able to cover the entry fee so they can't open straight into a negative balance.
-    if (Number(balance.amount) < effectiveCommission) {
+    // NEW MODEL: opening a trade no longer debits the balance — the fee is baked
+    // into the position's P/L (the trade starts at -fee). But the user must still
+    // be able to *afford* the buy price to open it, and rented credit-card balance
+    // counts toward that. Effective balance = real balance + the bonus from any
+    // currently-active debit cards (the card price was already taken out of the
+    // real balance at purchase time). This is the same figure shown as
+    // `effectiveAmount` on /balances/me.
+    const nowForCards = new Date();
+    const activeCards = await this.prisma.userDebitCard.findMany({
+      where: { userId, expiresAt: { gt: nowForCards } },
+      select: { bonusAmount: true },
+    });
+    const bonusTotal = activeCards.reduce(
+      (sum, c) => sum + Number(c.bonusAmount),
+      0,
+    );
+    const effectiveBalance = Number(balance.amount) + bonusTotal;
+
+    if (effectiveBalance < customerBuyPrice) {
       throw new BadRequestException(
-        `Insufficient balance to cover the $${effectiveCommission.toFixed(2)} fee. Available: $${Number(balance.amount).toFixed(2)}`,
+        `Insufficient balance. Buy price: $${customerBuyPrice.toFixed(2)}, available: $${effectiveBalance.toFixed(2)}` +
+          (bonusTotal > 0 ? ` (incl. $${bonusTotal.toFixed(2)} rented credit)` : ''),
       );
     }
 
