@@ -1,5 +1,11 @@
 class ApiConstants {
-  static const String _baseHost = 'https://azne-app.com';
+  // Defaults to production. Override for local testing with e.g.:
+  //   flutter run --dart-define=API_HOST=http://10.0.2.2:3000
+  // (10.0.2.2 is the host machine's localhost as seen from the Android emulator.)
+  static const String _baseHost = String.fromEnvironment(
+    'API_HOST',
+    defaultValue: 'https://azne-app.com',
+  );
 
   static String get host => _baseHost;
   static String get baseUrl => '$_baseHost/api';

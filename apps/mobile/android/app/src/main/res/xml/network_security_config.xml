@@ -10,4 +10,12 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- Allow plain http ONLY to the local dev backend reached from the Android
+         emulator (10.0.2.2 = host loopback). Harmless in release since no real
+         device/server uses these hosts; production traffic to azne-app.com stays
+         https via base-config. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
 </network-security-config>
