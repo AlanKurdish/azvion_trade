@@ -624,7 +624,10 @@ class _HistoryTabState extends State<_HistoryTab> {
                     // Trade items (index - 1 because index 0 is stats)
                     final tradeIndex = index - 1;
                     final trade = state.trades[tradeIndex];
+                    // Stored profitLoss is already net of the open commission
+                    // (backend bakes the fee into P/L on close).
                     final pnl = double.tryParse(trade['profitLoss']?.toString() ?? '0') ?? 0;
+                    final fee = _feeFor(trade);
                     final customerPrice = double.tryParse(trade['customerPrice']?.toString() ?? '0') ?? 0;
                     final closePrice = double.tryParse(trade['customerClosePrice']?.toString() ?? '') ??
                         double.tryParse(trade['closePrice']?.toString() ?? '0') ?? 0;
@@ -651,9 +654,19 @@ class _HistoryTabState extends State<_HistoryTab> {
                                 const SizedBox(width: 8),
                                 Text(symbolName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                 const Spacer(),
-                                Text(
-                                  '${pnl >= 0 ? '+' : ''}\$${pnl.toStringAsFixed(2)}',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: pnl >= 0 ? Colors.green : Colors.red),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '${pnl >= 0 ? '+' : ''}\$${pnl.toStringAsFixed(2)}',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: pnl >= 0 ? Colors.green : Colors.red),
+                                    ),
+                                    if (fee > 0)
+                                      Text(
+                                        '${t.tr('commission')}: -\$${fee.toStringAsFixed(2)}',
+                                        style: const TextStyle(color: Colors.grey, fontSize: 10),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
