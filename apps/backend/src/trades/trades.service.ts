@@ -106,13 +106,14 @@ export class TradesService {
     // customerBuyPrice is kept ONLY for display (the "buy price" shown in the app).
     const customerBuyPrice = formulaPrice + effectiveCommission;
 
-    // NEW MODEL: opening a trade no longer debits the balance — the fee is baked
-    // into the position's P/L (the trade starts at -fee). But the user must still
-    // be able to *afford* the buy price to open it, and rented credit-card balance
-    // counts toward that. Effective balance = real balance + the bonus from any
-    // currently-active debit cards (the card price was already taken out of the
-    // real balance at purchase time). This is the same figure shown as
-    // `effectiveAmount` on /balances/me.
+    // ESCROW MODEL: opening a trade debits the full buy price from the balance
+    // (returned on close as openDebit + net P/L). The fee stays baked into the
+    // position's P/L (the trade starts at -fee). Affordability is gated on the
+    // effective balance: real balance + the bonus from any currently-active
+    // debit cards (the card price was already taken out of the real balance at
+    // purchase time). This is the same figure shown as `effectiveAmount` on
+    // /balances/me — which means the real balance can go negative while a
+    // rented-credit trade is open; the escrow restores it on close.
     const nowForCards = new Date();
     const activeCards = await this.prisma.userDebitCard.findMany({
       where: { userId, expiresAt: { gt: nowForCards } },
@@ -155,33 +156,67 @@ export class TradesService {
       throw new BadRequestException(`Failed to open trade on MetaTrader: ${msg}`);
     }
 
-    // Step 2: Record the trade. NO balance movement on open — `openDebit = 0`
-    // marks this as a new-model trade so close() knows not to return any escrow.
-    // customerPrice/commission are still stored for display and for subtracting
-    // the fee from the live & realized P/L.
-    const trade = await this.prisma.trade.create({
-      data: {
-        userId,
-        symbolId,
-        type: 'BUY',
-        lotSize: symbol.lotSize,
-        openPrice: mtOpenPrice ?? liveAsk,
-        openBid: liveBid,
-        openAsk: liveAsk,
-        customerPrice: customerBuyPrice,
-        commission: effectiveCommission,
-        openDebit: 0,
-        mtOrderId,
-      },
-      include: {
-        symbol: { select: { displayName: true, mtSymbol: true } },
-      },
+    // Step 2: Escrow the buy price and record the trade in one DB transaction.
+    // `openDebit = customerBuyPrice` is what close() returns to the balance
+    // (plus the net P/L). commission is stored separately so the live and
+    // realized P/L can subtract the fee.
+    const trade = await this.prisma.$transaction(async (tx) => {
+      // Re-check effective balance inside the transaction (race guard).
+      const currentBalance = await tx.balance.findUnique({ where: { userId } });
+      if (
+        !currentBalance ||
+        Number(currentBalance.amount) + bonusTotal < customerBuyPrice
+      ) {
+        throw new BadRequestException('Insufficient balance');
+      }
+
+      // Deduct the traded amount from the balance (held until close).
+      await tx.balance.update({
+        where: { userId },
+        data: { amount: { decrement: customerBuyPrice } },
+      });
+
+      const newTrade = await tx.trade.create({
+        data: {
+          userId,
+          symbolId,
+          type: 'BUY',
+          lotSize: symbol.lotSize,
+          openPrice: mtOpenPrice ?? liveAsk,
+          openBid: liveBid,
+          openAsk: liveAsk,
+          customerPrice: customerBuyPrice,
+          commission: effectiveCommission,
+          openDebit: customerBuyPrice,
+          mtOrderId,
+        },
+        include: {
+          symbol: { select: { displayName: true, mtSymbol: true } },
+        },
+      });
+
+      // Single transaction line — the user sees one debit, no commission row.
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: 'TRADE_OPEN',
+          amount: new Prisma.Decimal(-customerBuyPrice),
+          tradeId: newTrade.id,
+          note: `Buy ${symbol.displayName} @ $${customerBuyPrice.toFixed(2)}`,
+        },
+      });
+
+      return newTrade;
     });
 
     // Step 3: Notify via WebSocket
     console.log(`[TRADE] Emitting trade:opened to user:${userId}`);
     this.wsGateway.emitToUser(userId, 'trade:opened', trade);
     this.wsGateway.emitAdminTradeOpened(trade);
+
+    // Balance moved on open — push the fresh figure so the app updates.
+    const updatedBalance = await this.prisma.balance.findUnique({ where: { userId } });
+    this.wsGateway.emitToUser(userId, 'balance:updated', { balance: updatedBalance?.amount });
 
     return trade;
   }
@@ -246,8 +281,8 @@ export class TradesService {
         },
       });
 
-      // Credit = whatever was escrowed on open (0 for new-model trades, the
-      // customerPrice for legacy ones) + the net result (P/L − fee).
+      // Credit = the buy price escrowed on open + the net result (P/L − fee).
+      // (openDebit is 0 only for trades opened during the no-escrow interim.)
       const openDebit = Number(trade.openDebit);
       const creditAmount = openDebit + profitLoss;
       await tx.balance.update({
@@ -447,7 +482,7 @@ export class TradesService {
         },
       });
 
-      // Credit = escrow returned on open (0 for new-model trades) + net result (P/L − fee).
+      // Credit = the buy price escrowed on open + net result (P/L − fee).
       const openDebit = Number(trade.openDebit);
       const creditAmount = openDebit + profitLoss;
       await tx.balance.update({
